@@ -11,7 +11,10 @@
 	-> a desktop web-be tudja lebonyolítani a könyvtári leltárt (+ba tudjon hozzáadni könyvet, stb)
  	-> az adatbázis FireStore-ban  lesz megvalósítva
 	-> a kód fejlesztése Firebase Studio környezetben lesz megvalósítva
-	-> 
+	-> az projekt nyelvezete magyar nyelvű 
+	-> a könnyebb átláthatóság érdekében legyenek letisztultak a felületek
+	-> a server/Desktop "motor" a felhőben fut, bármikor képes kiszolgállni a kölcsönzőt
+	-> a rendszertől a kölcsönző  emailen kapja az üzeneteket
 	->
 
 Felhasználói követelmény
