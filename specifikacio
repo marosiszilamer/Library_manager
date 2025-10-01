@@ -1,6 +1,19 @@
-n
-a projekt 1 könyvtár menedzselő eszköz kifejlesztése
-a projekt tartalmazzon desktop feluletet és mobilapplikáció.
-A Desktop az admin felülete, ahol látja, hogy milyen kkönyvek szerepelnek a könytárban, azok ki vannak adva vagy sem, hozzá tud adni/el tud venni könyvet. 
-A kölcsönzők a mobil apon keresztül lathatják az elerhető könyveket, kérhetnek ki/kapnak könyvet.
-a
+
+
+    ->a projekt 1 könyvtár menedzselő eszköz kifejlesztése
+    ->a projekt tartalmazzon desktop feluletet és mobilapplikáció.
+        A Desktop az admin felülete, ahol látja, hogy milyen kkönyvek 
+szerepelnek a könytárban, azok ki vannak adva vagy sem,
+ hozzá tud adni/el tud venni könyvet. 
+A kölcsönzők a mobil apon keresztül lathatják az elerhető könyveket,
+ kérhetnek ki/kapnak könyvet.
+
+Felhasználói spec
+    -> A Felhasználó/kölcsönző belép
+
+
+
+rendszerkövetelmények
+
+    ->Android telefon a kolcsonzoknek
+    ->Display eszkoz az admin(ok)nak
