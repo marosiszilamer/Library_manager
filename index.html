@@ -10,7 +10,7 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 51px;
+      height: 50px;
       background: #4a2c2a;
       display: flex;
       align-items: center;
@@ -90,8 +90,8 @@
   <div class="box" id="loginBox">
     <h2>Login</h2>
     <form id="loginForm">
-      <input type="text" placeholder="Email" required>
-      <input type="password" placeholder="Password" required>
+      <input type="email" id="loginEmail" placeholder="Email" required>
+      <input type="password" id="loginPassword" placeholder="Password" required>
       <button type="submit">Sign In</button>
     </form>
     <p>Forgot your password? <a href="#">Click here</a></p>
@@ -103,7 +103,7 @@
     <h2>Register</h2>
     <form id="registerForm">
       <input type="text" placeholder="Full Name" required>
-      <input type="email" placeholder="Email" required>
+      <input type="email" id="registerEmail" placeholder="Email" required>
       <input type="tel" placeholder="Phone Number" required>
       <input type="password" id="regPassword" placeholder="Password" required>
       <input type="password" id="regConfirm" placeholder="Confirm Password" required>
@@ -112,37 +112,29 @@
     <p>Already have an account? <a id="showLogin">Login</a></p>
   </div>
 
-  <script>
-    const loginBox = document.getElementById('loginBox');
-    const registerBox = document.getElementById('registerBox');
-    const showRegister = document.getElementById('showRegister');
-    const showLogin = document.getElementById('showLogin');
+  <!-- Content for logged in users -->
+    <div id="content-container" class="hidden">
+        <nav>
+            <p>Welcome, <span id="user-email"></span>!</p>
+            <button id="logout-btn">Logout</button>
+        </nav>
 
-    showRegister.addEventListener('click', () => {
-      loginBox.classList.add('hidden');
-      registerBox.classList.remove('hidden');
-    });
+        <div id="admin-content" class="hidden">
+            <h2>Admin Panel</h2>
+            <p>Welcome, admin! You have special privileges.</p>
+        </div>
 
-    showLogin.addEventListener('click', () => {
-      registerBox.classList.add('hidden');
-      loginBox.classList.remove('hidden');
-    });
+        <div id="user-content" class="hidden">
+            <h2>User Dashboard</h2>
+            <p>Welcome, general user!</p>
+        </div>
+    </div>
 
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      alert('Login form submitted!');
-    });
 
-    document.getElementById('registerForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const pw = document.getElementById('regPassword').value;
-      const confirm = document.getElementById('regConfirm').value;
-      if (pw !== confirm) {
-        alert('Passwords do not match!');
-      } else {
-        alert('Registration form submitted!');
-      }
-    });
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <script src="main.js"></script>
 </body>
 </html>
