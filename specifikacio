@@ -1,13 +1,15 @@
 
 
-    ->a projekt 1 könyvtár menedzselő eszköz kifejlesztése
-    ->a projekt tartalmazzon desktop feluletet és mobilapplikáció.
-        A Desktop az admin felülete, ahol látja, hogy milyen kkönyvek 
-szerepelnek a könytárban, azok ki vannak adva vagy sem,
+    -> a projekt 1 könyvtár menedzselő eszköz kifejlesztése
+    -> a projekt tartalmazzon desktop feluletet és mobilapplikációt
+    -> A Desktop az admin felülete, ahol látja, hogy milyen könyvek szerepelnek a könytárban, azok ki vannak adva vagy sem,
  hozzá tud adni/el tud venni könyvet. 
-A kölcsönzők a mobil apon keresztül lathatják az elerhető könyveket,
- kérhetnek ki/kapnak könyvet.
-
+    -> A kölcsönzők a mobil appon keresztül láthatják az elérhető könyveket, kérhetnek ki/kapnak könyvet.
+	-> a kód fejlesztése Firebase Studio környezetben lesz megvalósítva
+	-> az adatbázis FireStore-ban  lesz megvalósítva
+	-> a kód fejlesztése Firebase Studio környezetben lesz megvalósítva
+	-> 
+	-> a kód fejlesztése Firebase Studio környezetben lesz megvalósítva
 Felhasználói spec
     -> A Felhasználó/kölcsönző belép
 
