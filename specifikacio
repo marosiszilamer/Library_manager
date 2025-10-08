@@ -1,20 +1,21 @@
 Funkcionalis es nem funkcionalis követelmények:
 
-    -> a projekt 1 könyvtár menedzselő eszköz kifejlesztése
-    -> a projekt tartalmazzon desktop feluletet és mobilapplikációt
-    -> A Desktop az admin felülete, ahol látja, hogy milyen könyvek szerepelnek a könytárban, azok ki vannak adva vagy sem, hozzá tud adni/el tud venni könyvet. 
-    -> A kölcsönzők a mobil appon keresztül láthatják az elérhető könyveket, kérhetnek ki/kapnak könyvet.
-	-> a kód fejlesztése Firebase Studio környezetben lesz megvalósítva
-	-> lesz adatbázis, ahol eltároljuk a kiadványok adatait, felhasználók adatait, kölcsönzéseket
-	-> kell legyen kommunikáció a desktop (web) és a mobil app között
-	-> a mobil app meg  kell jelenítse a könyvek adatait a kölcsönzőnek 
-	-> a desktop web-be tudja lebonyolítani a könyvtári leltárt (+ba tudjon hozzáadni könyvet, stb)
- 	-> az adatbázis FireStore-ban  lesz megvalósítva
-	-> a kód fejlesztése Firebase Studio környezetben lesz megvalósítva
-	-> az projekt nyelvezete magyar nyelvű 
-	-> a könnyebb átláthatóság érdekében legyenek letisztultak a felületek
-	-> a server/Desktop "motor" a felhőben fut, bármikor képes kiszolgállni a kölcsönzőt
-	-> a rendszertől a kölcsönző  emailen kapja az üzeneteket
+    -> A projekt 1 könyvtár menedzselő eszköz kifejlesztése
+    -> A projekt tartalmazzon bongeszo (site) feluletet és mobilapplikációt
+    -> A bongeszo (site)  felületen be lehet lepni adminitratorkent vagy kolcsonzokent
+	-> Az adminitratorkent latja, hogy milyen könyvek szerepelnek a könytárban, azok ki vannak adva vagy sem, hozzá tud adni/el tud venni könyvet. 
+    -> A kölcsönzők a mobil appon keresztül belepnek, ennek kovetkezmenyekent láthatják az elérhető könyveket, kérhetnek ki/kapnak könyvet.
+	-> A kód fejlesztése Firebase Studio környezetben lesz megvalósítva
+	-> Lesz adatbázis, ahol eltároljuk a kiadványok adatait, felhasználók adatait, kölcsönzéseket
+	-> Kell legyen kommunikáció a desktop (web) és a mobil app között
+	-> A mobil app meg  kell jelenítse a könyvek adatait a kölcsönzőnek 
+	-> A desktop web-be tudja lebonyolítani a könyvtári leltárt (+ba tudjon hozzáadni könyvet, stb)
+ 	-> Az adatbázis FireStore-ban  lesz megvalósítva
+	-> A kód fejlesztése Firebase Studio környezetben lesz megvalósítva
+	-> Az projekt nyelvezete magyar nyelvű 
+	-> A könnyebb átláthatóság érdekében legyenek letisztultak a felületek
+	-> A server/Desktop "motor" a felhőben fut, bármikor képes kiszolgállni a kölcsönzőt
+	-> A rendszertől a kölcsönző  emailen kapja az üzeneteket
 	
 
 Felhasználói követelmény:
