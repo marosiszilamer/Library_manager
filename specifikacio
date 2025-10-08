@@ -18,8 +18,12 @@
 	->
 
 Felhasználói követelmény
-    -> A Felhasználó/kölcsönző belép
-
+    -> az admin listazni tudja a konyveket
+	-> a kolcsonzok listazni tudjak az elerheto konyveket
+	-> a kolcsonzok listazni tudjak a kivett konyveket
+	-> az admin visszahozasra figyelmeztetest ad ki
+	-> a kolcsonzok listazni tudjak az elerheto konyveket
+	-> a kolcsonzok listazni tudjak a kivett konyveket
 
 rendszerkövetelmények
 
