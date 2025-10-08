@@ -1,4 +1,4 @@
-Altalanos követelmények:
+Funkcionalis es nem funkcionalis követelmények:
 
     -> a projekt 1 könyvtár menedzselő eszköz kifejlesztése
     -> a projekt tartalmazzon desktop feluletet és mobilapplikációt
@@ -29,5 +29,5 @@ Felhasználói követelmény:
 rendszerkövetelmények:
 
     ->Android telefon a kolcsonzoknek
-    ->Display eszkoz az admin(ok)nak
+    ->Display eszkoz(chrome es edge) az admin(ok)nak
 	->
