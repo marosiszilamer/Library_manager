@@ -1,4 +1,4 @@
-
+Altalanos követelmények:
 
     -> a projekt 1 könyvtár menedzselő eszköz kifejlesztése
     -> a projekt tartalmazzon desktop feluletet és mobilapplikációt
@@ -15,17 +15,19 @@
 	-> a könnyebb átláthatóság érdekében legyenek letisztultak a felületek
 	-> a server/Desktop "motor" a felhőben fut, bármikor képes kiszolgállni a kölcsönzőt
 	-> a rendszertől a kölcsönző  emailen kapja az üzeneteket
-	->
+	
 
-Felhasználói követelmény
+Felhasználói követelmény:
     -> az admin listazni tudja a konyveket
 	-> a kolcsonzok listazni tudjak az elerheto konyveket
 	-> a kolcsonzok listazni tudjak a kivett konyveket
 	-> az admin visszahozasra figyelmeztetest ad ki
-	-> a kolcsonzok listazni tudjak az elerheto konyveket
-	-> a kolcsonzok listazni tudjak a kivett konyveket
+	-> a kolcsonzok kell fiokot csinalcsajak (email es pwd)
+	-> a kolcsonzok be kell jelentkezzenek email es pwd segitsegevel
+	-> az adminok be kell jelentkezzenek email es pwd segitsegevel
 
-rendszerkövetelmények
+rendszerkövetelmények:
 
     ->Android telefon a kolcsonzoknek
     ->Display eszkoz az admin(ok)nak
+	->
