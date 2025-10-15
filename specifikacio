@@ -1,0 +1,34 @@
+Funkcionalis es nem funkcionalis követelmények:
+
+    -> A projekt 1 könyvtár menedzselő eszköz kifejlesztése
+    -> A projekt tartalmazzon bongeszo (site) feluletet és mobilapplikációt
+    -> A bongeszo (site)  felületen be lehet lepni adminitratorkent vagy kolcsonzokent
+	-> Az adminitratorkent latja, hogy milyen könyvek szerepelnek a könytárban, azok ki vannak adva vagy sem, hozzá tud adni/el tud venni könyvet. 
+    -> A kölcsönzők a mobil appon keresztül belepnek, ennek kovetkezmenyekent láthatják az elérhető könyveket, kérhetnek ki/kapnak könyvet.
+	-> A kód fejlesztése Firebase Studio környezetben lesz megvalósítva
+	-> Lesz adatbázis, ahol eltároljuk a kiadványok adatait, felhasználók adatait, kölcsönzéseket
+	-> Kell legyen kommunikáció a desktop (web) és a mobil app között
+	-> A mobil app meg  kell jelenítse a könyvek adatait a kölcsönzőnek 
+	-> A desktop web-be tudja lebonyolítani a könyvtári leltárt (+ba tudjon hozzáadni könyvet, stb)
+ 	-> Az adatbázis FireStore-ban  lesz megvalósítva
+	-> A kód fejlesztése Firebase Studio környezetben lesz megvalósítva
+	-> Az projekt nyelvezete magyar nyelvű 
+	-> A könnyebb átláthatóság érdekében legyenek letisztultak a felületek
+	-> A server/Desktop "motor" a felhőben fut, bármikor képes kiszolgállni a kölcsönzőt
+	-> A rendszertől a kölcsönző  emailen kapja az üzeneteket
+	
+
+Felhasználói követelmény:
+    -> az admin listazni tudja a konyveket
+	-> a kolcsonzok listazni tudjak az elerheto konyveket
+	-> a kolcsonzok listazni tudjak a kivett konyveket
+	-> az admin visszahozasra figyelmeztetest ad ki
+	-> a kolcsonzok kell fiokot csinalcsajak (email es pwd)
+	-> a kolcsonzok be kell jelentkezzenek email es pwd segitsegevel
+	-> az adminok be kell jelentkezzenek email es pwd segitsegevel
+
+rendszerkövetelmények:
+
+    ->Android telefon a kolcsonzoknek
+    ->Display eszkoz(chrome es edge) az admin(ok)nak
+	->
