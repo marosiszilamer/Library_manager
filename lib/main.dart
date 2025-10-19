@@ -18,6 +18,64 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// Helper to render a cover image. If `path` starts with http it uses
+// Image.network, otherwise Image.asset. On error it shows a placeholder.
+Widget buildCoverWidget(
+  String? path, {
+  double? width,
+  double? height,
+  BoxFit? fit,
+}) {
+  const placeholder = Icon(Icons.book, size: 64, color: Colors.grey);
+
+  Widget image;
+  if (path != null && path.isNotEmpty) {
+    if (path.startsWith('http')) {
+      image = Image.network(
+        path,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (ctx, error, stack) {
+          debugPrint('Image load error: $error');
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.broken_image, size: 48, color: Colors.grey),
+              SizedBox(height: 6),
+              Text(
+                'Nem tölthető',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      image = Image.asset(
+        path,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (ctx, error, stack) {
+          debugPrint('Asset image error: $error');
+          return placeholder;
+        },
+      );
+    }
+  } else {
+    image = placeholder;
+  }
+
+  return ClipRRect(
+    borderRadius: const BorderRadius.only(
+      topLeft: Radius.circular(8),
+      topRight: Radius.circular(8),
+    ),
+    child: SizedBox(width: width, height: height, child: image),
+  );
+}
+
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
 
@@ -46,10 +104,44 @@ class _AuthPageState extends State<AuthPage> {
   bool showBooks = false;
   final searchController = TextEditingController();
   List<Map<String, String>> books = [
-    {'title': 'A kis herceg', 'author': 'Antoine de Saint-Exupéry'},
-    {'title': '1984', 'author': 'George Orwell'},
-    {'title': 'A Gyűrűk Ura', 'author': 'J.R.R. Tolkien'},
-    {'title': 'A kód', 'author': 'Dan Brown'},
+    {
+      'title': 'A kis herceg',
+      'author': 'Antoine de Saint-Exupéry',
+      'description':
+          'Egy kisfiú és egy különös bolygó története; filozofikus mese a barátságról és az emberi természet megértéséről.',
+      'pages': '96',
+      'language': 'magyar',
+      // user-provided cover image (Kéréseid szerint)
+      'image':
+          'https://alexandrakiado.hu/content/2023/8/Product/a_kis_herceg_b1.jpg',
+    },
+    {
+      'title': '1984',
+      'author': 'George Orwell',
+      'description':
+          'Dystópikus regény a totalitárius államról, ahol a nagy testvér figyel és az igazság manipulálható.',
+      'pages': '328',
+      'language': 'magyar',
+      'image': '',
+    },
+    {
+      'title': 'A Gyűrűk Ura',
+      'author': 'J.R.R. Tolkien',
+      'description':
+          'Egy epikus fantasy történet a hatalomról, barátságról és a bátorságról; Középfölde sorsa a tét.',
+      'pages': '1216',
+      'language': 'magyar',
+      'image': '',
+    },
+    {
+      'title': 'A kód',
+      'author': 'Dan Brown',
+      'description':
+          'Izgalmas krimi tele rejtélyekkel, titkos társaságokkal és művészeti kódokkal.',
+      'pages': '448',
+      'language': 'magyar',
+      'image': '',
+    },
   ];
 
   @override
@@ -66,6 +158,8 @@ class _AuthPageState extends State<AuthPage> {
     registerConfirmController.dispose();
     super.dispose();
   }
+
+  // (use top-level buildCoverWidget to render covers)
 
   void _login() {
     final valid = _loginFormKey.currentState?.validate() ?? false;
@@ -666,75 +760,63 @@ class _AuthPageState extends State<AuthPage> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final b = filtered[index];
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                        return InkWell(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BookDetailPage(book: b),
+                            ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Image / cover area
-                              Container(
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(8),
-                                    topRight: Radius.circular(8),
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Image / cover area
+                                Container(
+                                  height: 140,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(8),
+                                      topRight: Radius.circular(8),
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: buildCoverWidget(
+                                    b['image'],
+                                    width: double.infinity,
+                                    height: 140,
+                                    fit: BoxFit.cover,
                                   ),
                                 ),
-                                alignment: Alignment.center,
-                                child:
-                                    (b['image'] != null &&
-                                        b['image']!.isNotEmpty)
-                                    ? ClipRRect(
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(8),
-                                          topRight: Radius.circular(8),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        b['title'] ?? '',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        child: Image.network(
-                                          b['image']!,
-                                          fit: BoxFit.cover,
-                                          width: double.infinity,
-                                          height: 140,
-                                          errorBuilder: (_, __, ___) =>
-                                              const Icon(
-                                                Icons.book,
-                                                size: 64,
-                                                color: Colors.grey,
-                                              ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        b['author'] ?? '',
+                                        style: const TextStyle(
+                                          color: Colors.black54,
+                                          fontSize: 12,
                                         ),
-                                      )
-                                    : const Icon(
-                                        Icons.book,
-                                        size: 64,
-                                        color: Colors.grey,
                                       ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      b['title'] ?? '',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      b['author'] ?? '',
-                                      style: const TextStyle(
-                                        color: Colors.black54,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -742,6 +824,102 @@ class _AuthPageState extends State<AuthPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class BookDetailPage extends StatelessWidget {
+  final Map<String, String> book;
+  const BookDetailPage({super.key, required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(book['title'] ?? 'Könyv'),
+        backgroundColor: const Color(0xFF4A2C2A),
+      ),
+      body: Center(
+        child: Container(
+          width: 900,
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              // Left column: cover + author
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 360,
+                      width: 240,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: buildCoverWidget(
+                        book['image'],
+                        width: 240,
+                        height: 360,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      book['author'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 24),
+
+              // Right column: description + meta
+              Expanded(
+                flex: 6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book['title'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      book['description'] ?? 'Nincs leírás',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        if (book['pages'] != null) ...[
+                          const Icon(Icons.menu_book, size: 16),
+                          const SizedBox(width: 6),
+                          Text('${book['pages']} oldal'),
+                          const SizedBox(width: 18),
+                        ],
+                        if (book['language'] != null) ...[
+                          const Icon(Icons.language, size: 16),
+                          const SizedBox(width: 6),
+                          Text(book['language']!),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
