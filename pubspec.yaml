@@ -61,6 +61,11 @@ flutter:
   assets:
     - assets/background.png
     - assets/librarylogo.png
+    - assets/a_kis_herceg_b1.jpg
+    - assets/1984.jpg
+    - assets/a_gyuruk_ura.png
+    - assets/a_kod.png
+    - assets/librarymanager_logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
