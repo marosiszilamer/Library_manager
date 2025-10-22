@@ -102,9 +102,9 @@ class _AuthPageState extends State<AuthPage> {
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
   bool _loginObscure = true;
-  // Books/search state
   bool showBooks = false;
   final searchController = TextEditingController();
+
   List<Map<String, String>> books = [
     {
       'title': 'A kis herceg',
@@ -114,6 +114,7 @@ class _AuthPageState extends State<AuthPage> {
       'pages': '96',
       'language': 'magyar',
       'image': 'assets/a_kis_herceg_b1.jpg',
+      'price': '2490',
     },
     {
       'title': '1984',
@@ -123,6 +124,7 @@ class _AuthPageState extends State<AuthPage> {
       'pages': '328',
       'language': 'magyar',
       'image': '1984.jpg',
+      'price': '3290',
     },
     {
       'title': 'A Gyűrűk Ura',
@@ -132,6 +134,7 @@ class _AuthPageState extends State<AuthPage> {
       'pages': '1216',
       'language': 'magyar',
       'image': 'a_gyuruk_ura.png',
+      'price': '5990',
     },
     {
       'title': 'A kód',
@@ -141,6 +144,7 @@ class _AuthPageState extends State<AuthPage> {
       'pages': '448',
       'language': 'magyar',
       'image': 'a_kod.png',
+      'price': '4190',
     },
   ];
 
@@ -234,6 +238,7 @@ class _AuthPageState extends State<AuthPage> {
     final titleC = TextEditingController();
     final authorC = TextEditingController();
     final imageC = TextEditingController();
+    final priceC = TextEditingController();
 
     return showDialog<Map<String, String>>(
       context: context,
@@ -256,6 +261,11 @@ class _AuthPageState extends State<AuthPage> {
                 hintText: 'Borító kép (URL, opcionális)',
               ),
             ),
+            TextField(
+              controller: priceC,
+              decoration: const InputDecoration(hintText: 'Ár (Ft, pl. 2790)'),
+              keyboardType: TextInputType.number,
+            ),
           ],
         ),
         actions: [
@@ -275,7 +285,11 @@ class _AuthPageState extends State<AuthPage> {
                 );
                 return;
               }
-              final map = <String, String>{'title': title, 'author': author};
+              final map = <String, String>{
+                'title': title,
+                'author': author,
+                'price': priceC.text.trim(),
+              };
               if (imageC.text.trim().isNotEmpty) {
                 map['image'] = imageC.text.trim();
               }
@@ -291,7 +305,6 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final topBarHeight = showBooks ? 120.0 : 50.0;
-
     return Scaffold(
       body: Stack(
         children: [
@@ -444,7 +457,6 @@ class _AuthPageState extends State<AuthPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Login box
           Visibility(
             visible: !showRegister,
             child: Container(
@@ -800,6 +812,16 @@ class _AuthPageState extends State<AuthPage> {
                                           fontSize: 12,
                                         ),
                                       ),
+                                      const SizedBox(height: 6),
+                                      if (b['price'] != null)
+                                        Text(
+                                          '${b['price']} Ft',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: Color(0xFF4A2C2A),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -817,7 +839,6 @@ class _AuthPageState extends State<AuthPage> {
   }
 }
 
-// --- EZT A RÉSZT ILLESZD BE A FILE VÉGÉRE ---
 class BookDetailPage extends StatelessWidget {
   final Map<String, String> book;
   final void Function(Map<String, String> book) addToCart;
@@ -843,7 +864,6 @@ class BookDetailPage extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              // Left: cover + author
               Expanded(
                 flex: 4,
                 child: Column(
@@ -875,7 +895,6 @@ class BookDetailPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 24),
-              // Right: description + meta
               Expanded(
                 flex: 6,
                 child: Column(
@@ -888,6 +907,18 @@ class BookDetailPage extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (book['price'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, bottom: 8),
+                        child: Text(
+                          '${book['price']} Ft',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Color(0xFF4A2C2A),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     Text(
                       book['description'] ?? 'Nincs leírás',
@@ -937,38 +968,72 @@ class BookDetailPage extends StatelessWidget {
   }
 }
 
-// --- EZT IS TEGYED BE AKÁR A FILE VÉGÉRE ---
 class CartDialog extends StatelessWidget {
   final List<Map<String, String>> cart;
   final void Function(Map<String, String> book) onRemove;
 
   const CartDialog({super.key, required this.cart, required this.onRemove});
 
+  int getTotal() {
+    int total = 0;
+    for (final book in cart) {
+      final price = int.tryParse(book['price'] ?? '0') ?? 0;
+      total += price;
+    }
+    return total;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Kosár tartalma'),
       content: SizedBox(
-        width: 300,
+        width: 330,
         child: cart.isEmpty
             ? const Text('A kosár üres.')
             : Column(
                 mainAxisSize: MainAxisSize.min,
-                children: cart
-                    .map(
-                      (book) => ListTile(
-                        title: Text(book['title'] ?? ''),
-                        subtitle: Text(book['author'] ?? ''),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () {
-                            onRemove(book);
-                            Navigator.of(context).pop();
-                          },
-                        ),
+                children: [
+                  ...cart.map(
+                    (book) => ListTile(
+                      title: Text(book['title'] ?? ''),
+                      subtitle: Text(book['author'] ?? ''),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (book['price'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Text(
+                                '${book['price']} Ft',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              onRemove(book);
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        ],
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                  const Divider(),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'Végösszeg: ${getTotal()} Ft',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
               ),
       ),
       actions: [
