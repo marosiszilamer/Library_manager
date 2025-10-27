@@ -146,29 +146,123 @@ class _AuthPageState extends State<AuthPage> {
       'image': 'a_kod.png',
       'price': '4190',
     },
+    {
+      'title': 'Harry Potter és a bölcsek köve',
+      'author': 'J.K. Rowling',
+      'description':
+          'Egy fiatal varázsló első éve a Roxfort Boszorkány- és Varázslóképző Szakiskolában, ahol barátságokat köt és veszélyes kalandokba keveredik.',
+      'pages': '336',
+      'language': 'magyar',
+      'image': '',
+      'price': '3990',
+    },
+    {
+      'title': 'Az öreg halász és a tenger',
+      'author': 'Ernest Hemingway',
+      'description':
+          'Egy idős kubai halász küzdelme egy hatalmas marlinnal a tengeren; történet a kitartásról, büszkeségről és az emberi létről.',
+      'pages': '128',
+      'language': 'magyar',
+      'image': '',
+      'price': '1990',
+    },
+    {
+      'title': 'Sinistra ​körzet',
+      'author': 'Ádám Bodor',
+      'description':
+          'Egy távoli sziget rejtélyes és nyomasztó története, ahol a valóság és a képzelet határai elmosódnak.',
+      'pages': '256',
+      'language': 'magyar',
+      'image': '',
+      'price': '3490',
+    },
+    {
+      'title': 'Egri csillagok',
+      'author': 'Gárdonyi Géza',
+      'description':
+          'Történelmi regény az egri vár hősi védelméről a törökök ellen, bátorságról és hazaszeretetről.',
+      'pages': '512',
+      'language': 'magyar',
+      'image': '',
+      'price': '2990',
+    },
+    {
+      'title': 'A Pál utcai fiúk',
+      'author': 'Molnár Ferenc',
+      'description':
+          'Két budapesti fiúbanda rivalizálása egy focilabda körül; történet a barátságról, árulásról és gyermekkor végéről.',
+      'pages': '192',
+      'language': 'magyar',
+      'image': '',
+      'price': '2290',
+    },
   ];
 
   // Kosár allapot és függvények
-  List<Map<String, String>> cart = [];
+  List<Map<String, dynamic>> cart = [];
 
-  bool isInCart(Map<String, String> book) {
-    return cart.any(
+  // Kedvencek állapot és függvények
+  List<Map<String, String>> favorites = [];
+
+  bool isFavorite(Map<String, String> book) {
+    return favorites.any(
       (b) => b['title'] == book['title'] && b['author'] == book['author'],
     );
   }
 
-  void addToCart(Map<String, String> book) {
+  void toggleFavorite(Map<String, String> book) {
     setState(() {
-      if (!isInCart(book)) cart.add(book);
+      if (isFavorite(book)) {
+        favorites.removeWhere(
+          (b) => b['title'] == book['title'] && b['author'] == book['author'],
+        );
+      } else {
+        favorites.add(book);
+      }
     });
   }
 
-  void removeFromCart(Map<String, String> book) {
+  bool isInCart(Map<String, String> book) {
+    return cart.any(
+      (b) =>
+          b['title'] == book['title'] &&
+          b['author'] == book['author'] &&
+          (b['quantity'] as int) > 0,
+    );
+  }
+
+  void addToCart(Map<String, dynamic> book, [int quantity = 1]) {
     setState(() {
-      cart.removeWhere(
+      final existingIndex = cart.indexWhere(
         (b) => b['title'] == book['title'] && b['author'] == book['author'],
       );
+      if (existingIndex != -1) {
+        cart[existingIndex]['quantity'] =
+            (cart[existingIndex]['quantity'] as int) + quantity;
+      } else {
+        cart.add({...book, 'quantity': quantity});
+      }
     });
+  }
+
+  void removeFromCart(Map<String, dynamic> book) {
+    setState(() {
+      final existingIndex = cart.indexWhere(
+        (b) => b['title'] == book['title'] && b['author'] == book['author'],
+      );
+      if (existingIndex != -1) {
+        final currentQuantity = cart[existingIndex]['quantity'] as int;
+        if (currentQuantity > 1) {
+          cart[existingIndex]['quantity'] = currentQuantity - 1;
+        } else {
+          cart.removeAt(existingIndex);
+        }
+      }
+    });
+  }
+
+  int getCartQuantity() {
+    return cart.fold(0, (sum, item) => sum + (item['quantity'] as int));
   }
 
   @override
@@ -216,6 +310,7 @@ class _AuthPageState extends State<AuthPage> {
       userEmail = '';
       isAdmin = false;
       cart.clear();
+      favorites.clear();
     });
   }
 
@@ -379,11 +474,18 @@ class _AuthPageState extends State<AuthPage> {
                             color: Colors.white,
                           ),
                           onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => CartDialog(
-                                cart: cart,
-                                onRemove: removeFromCart,
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => CheckoutPage(
+                                  cart: cart,
+                                  onAdd: addToCart,
+                                  onRemove: removeFromCart,
+                                  onOrderPlaced: () {
+                                    setState(() {
+                                      cart.clear();
+                                    });
+                                  },
+                                ),
                               ),
                             );
                           },
@@ -399,7 +501,7 @@ class _AuthPageState extends State<AuthPage> {
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
-                                '${cart.length}',
+                                '${getCartQuantity()}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -408,6 +510,19 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                           ),
                       ],
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.favorite, color: Colors.white),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => FavoritesDialog(
+                            favorites: favorites,
+                            onRemove: toggleFavorite,
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: 8),
                     if (isAdmin)
@@ -772,57 +887,77 @@ class _AuthPageState extends State<AuthPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                            child: Stack(
                               children: [
-                                Container(
-                                  height: 140,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    borderRadius: const BorderRadius.only(
-                                      topLeft: Radius.circular(8),
-                                      topRight: Radius.circular(8),
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Container(
+                                      height: 140,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(8),
+                                          topRight: Radius.circular(8),
+                                        ),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: buildCoverWidget(
+                                        b['image'],
+                                        width: double.infinity,
+                                        height: 140,
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: buildCoverWidget(
-                                    b['image'],
-                                    width: double.infinity,
-                                    height: 140,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        b['title'] ?? '',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        b['author'] ?? '',
-                                        style: const TextStyle(
-                                          color: Colors.black54,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      if (b['price'] != null)
-                                        Text(
-                                          '${b['price']} Ft',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                            color: Color(0xFF4A2C2A),
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            b['title'] ?? '',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
-                                        ),
-                                    ],
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            b['author'] ?? '',
+                                            style: const TextStyle(
+                                              color: Colors.black54,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          if (b['price'] != null)
+                                            Text(
+                                              '${b['price']} Ft',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: Color(0xFF4A2C2A),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: IconButton(
+                                    icon: Icon(
+                                      isFavorite(b)
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: isFavorite(b)
+                                          ? Colors.red
+                                          : Colors.grey,
+                                    ),
+                                    onPressed: () => toggleFavorite(b),
                                   ),
                                 ),
                               ],
@@ -969,16 +1104,23 @@ class BookDetailPage extends StatelessWidget {
 }
 
 class CartDialog extends StatelessWidget {
-  final List<Map<String, String>> cart;
-  final void Function(Map<String, String> book) onRemove;
+  final List<Map<String, dynamic>> cart;
+  final void Function(Map<String, dynamic> book) onAdd;
+  final void Function(Map<String, dynamic> book) onRemove;
 
-  const CartDialog({super.key, required this.cart, required this.onRemove});
+  const CartDialog({
+    super.key,
+    required this.cart,
+    required this.onAdd,
+    required this.onRemove,
+  });
 
   int getTotal() {
     int total = 0;
     for (final book in cart) {
       final price = int.tryParse(book['price'] ?? '0') ?? 0;
-      total += price;
+      final quantity = book['quantity'] as int;
+      total += price * quantity;
     }
     return total;
   }
@@ -1001,23 +1143,29 @@ class CartDialog extends StatelessWidget {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (book['price'] != null)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: Text(
-                                '${book['price']} Ft',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
                           IconButton(
-                            icon: const Icon(Icons.delete),
+                            icon: const Icon(Icons.remove),
                             onPressed: () {
                               onRemove(book);
                               Navigator.of(context).pop();
                             },
                           ),
+                          Text('${book['quantity']}'),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () {
+                              onAdd(book);
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          if (book['price'] != null)
+                            Text(
+                              '${(int.tryParse(book['price'] ?? '0') ?? 0) * (book['quantity'] as int)} Ft',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -1042,6 +1190,364 @@ class CartDialog extends StatelessWidget {
           child: const Text('Bezár'),
         ),
       ],
+    );
+  }
+}
+
+class FavoritesDialog extends StatelessWidget {
+  final List<Map<String, String>> favorites;
+  final void Function(Map<String, String> book) onRemove;
+
+  const FavoritesDialog({
+    super.key,
+    required this.favorites,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Kedvencek'),
+      content: SizedBox(
+        width: 330,
+        child: favorites.isEmpty
+            ? const Text('Nincs kedvenc könyv.')
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...favorites.map(
+                    (book) => ListTile(
+                      title: Text(book['title'] ?? ''),
+                      subtitle: Text(book['author'] ?? ''),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          onRemove(book);
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Bezár'),
+        ),
+      ],
+    );
+  }
+}
+
+class CheckoutPage extends StatefulWidget {
+  final List<Map<String, dynamic>> cart;
+  final void Function(Map<String, dynamic> book) onAdd;
+  final void Function(Map<String, dynamic> book) onRemove;
+  final void Function() onOrderPlaced;
+
+  const CheckoutPage({
+    super.key,
+    required this.cart,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onOrderPlaced,
+  });
+
+  @override
+  State<CheckoutPage> createState() => _CheckoutPageState();
+}
+
+class _CheckoutPageState extends State<CheckoutPage> {
+  final _formKey = GlobalKey<FormState>();
+  final firstNameController = TextEditingController();
+  final lastNameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final emailController = TextEditingController();
+  final countyController = TextEditingController();
+  final cityController = TextEditingController();
+  final houseNumberController = TextEditingController();
+  final postalCodeController = TextEditingController();
+
+  @override
+  void dispose() {
+    firstNameController.dispose();
+    lastNameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    countyController.dispose();
+    cityController.dispose();
+    houseNumberController.dispose();
+    postalCodeController.dispose();
+    super.dispose();
+  }
+
+  int getTotal() {
+    int total = 0;
+    for (final book in widget.cart) {
+      final price = int.tryParse(book['price'] ?? '0') ?? 0;
+      final quantity = book['quantity'] as int;
+      total += price * quantity;
+    }
+    return total;
+  }
+
+  void _placeOrder() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (widget.cart.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('A kosár üres.')));
+      return;
+    }
+    // Simulate order placement
+    widget.onOrderPlaced();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Rendelés leadva!')));
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Rendelés leadása'),
+        backgroundColor: const Color(0xFF4A2C2A),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Kosár tartalma',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            if (widget.cart.isEmpty)
+              const Text('A kosár üres.')
+            else
+              Column(
+                children: [
+                  ...widget.cart.map(
+                    (book) => ListTile(
+                      title: Text(book['title'] ?? ''),
+                      subtitle: Text(book['author'] ?? ''),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove),
+                            onPressed: () {
+                              widget.onRemove(book);
+                              setState(() {});
+                            },
+                          ),
+                          Text('${book['quantity']}'),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () {
+                              widget.onAdd(book);
+                              setState(() {});
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          if (book['price'] != null)
+                            Text(
+                              '${(int.tryParse(book['price'] ?? '0') ?? 0) * (book['quantity'] as int)} Ft',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Divider(),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'Végösszeg: ${getTotal()} Ft',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 24),
+            const Text(
+              'Szállítási adatok',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: lastNameController,
+                          decoration: const InputDecoration(
+                            hintText: 'Vezetéknév',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Kérlek add meg a vezetékneved.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: firstNameController,
+                          decoration: const InputDecoration(
+                            hintText: 'Keresztnév',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Kérlek add meg a keresztneved.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: phoneController,
+                    decoration: const InputDecoration(
+                      hintText: 'Telefonszám',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Kérlek add meg a telefonszámod.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      hintText: 'Email cím',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Kérlek add meg az email címed.';
+                      }
+                      if (!v.contains('@')) {
+                        return 'Érvényes email címet adj meg.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: countyController,
+                          decoration: const InputDecoration(
+                            hintText: 'Megye',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Kérlek add meg a megyét.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: cityController,
+                          decoration: const InputDecoration(
+                            hintText: 'Település',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Kérlek add meg a települést.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: houseNumberController,
+                          decoration: const InputDecoration(
+                            hintText: 'Házszám',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Kérlek add meg a házszámot.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: postalCodeController,
+                          decoration: const InputDecoration(
+                            hintText: 'Irányítószám',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Kérlek add meg az irányítószámot.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _placeOrder,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4A2C2A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Rendelés leadása'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
