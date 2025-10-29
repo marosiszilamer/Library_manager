@@ -153,7 +153,7 @@ class _AuthPageState extends State<AuthPage> {
           'Egy fiatal varázsló első éve a Roxfort Boszorkány- és Varázslóképző Szakiskolában, ahol barátságokat köt és veszélyes kalandokba keveredik.',
       'pages': '336',
       'language': 'magyar',
-      'image': '',
+      'image': 'harry_potter_es_a_bolcsek_kove.jpg',
       'price': '3990',
     },
     {
@@ -163,17 +163,17 @@ class _AuthPageState extends State<AuthPage> {
           'Egy idős kubai halász küzdelme egy hatalmas marlinnal a tengeren; történet a kitartásról, büszkeségről és az emberi létről.',
       'pages': '128',
       'language': 'magyar',
-      'image': '',
+      'image': 'az_oreg_halasz_es_a_tenger.jpeg',
       'price': '1990',
     },
     {
-      'title': 'Sinistra ​körzet',
+      'title': 'Sinistra körzet',
       'author': 'Ádám Bodor',
       'description':
           'Egy távoli sziget rejtélyes és nyomasztó története, ahol a valóság és a képzelet határai elmosódnak.',
       'pages': '256',
       'language': 'magyar',
-      'image': '',
+      'image': 'sinistra_korzet.jpeg',
       'price': '3490',
     },
     {
@@ -183,7 +183,7 @@ class _AuthPageState extends State<AuthPage> {
           'Történelmi regény az egri vár hősi védelméről a törökök ellen, bátorságról és hazaszeretetről.',
       'pages': '512',
       'language': 'magyar',
-      'image': '',
+      'image': 'egri_csillagok.jpg',
       'price': '2990',
     },
     {
@@ -193,7 +193,7 @@ class _AuthPageState extends State<AuthPage> {
           'Két budapesti fiúbanda rivalizálása egy focilabda körül; történet a barátságról, árulásról és gyermekkor végéről.',
       'pages': '192',
       'language': 'magyar',
-      'image': '',
+      'image': 'a_pal_utcai_fiuk.jpg',
       'price': '2290',
     },
   ];
@@ -1313,8 +1313,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rendelés leadása'),
+        title: const Text('Rendelés összesítés'),
         backgroundColor: const Color(0xFF4A2C2A),
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -1533,6 +1534,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
             ),
             const SizedBox(height: 24),
+            const Text(
+              'A rendelés leadását követően a fizetés csak készpénzzel megvalósítható.',
+              style: TextStyle(fontSize: 14, color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -1542,7 +1549,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Rendelés leadása'),
+                child: const Text('Rendelés véglegesítése'),
               ),
             ),
           ],
