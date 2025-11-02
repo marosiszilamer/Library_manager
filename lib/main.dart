@@ -89,7 +89,7 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
-  /* void initState() {
+  void initState() {
     super.initState();
     _initConnection();
   }
@@ -127,7 +127,7 @@ class _AuthPageState extends State<AuthPage> {
       super.dispose();
     }
   }
-*/
+
   @override
   bool showRegister = false;
   bool loggedIn = false;
