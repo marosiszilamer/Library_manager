@@ -66,11 +66,17 @@ flutter:
   assets:
     - assets/background.png
     - assets/librarylogo.png
-    - assets/a_kis_herceg_b1.jpg
+    - assets/buszkeseg.jpg
     - assets/1984.jpg
-    - assets/a_gyuruk_ura.png
-    - assets/a_kod.png
+    - assets/fegyverek.jpg
     - assets/librarymanager_logo.png
+    - assets/gyertyak.jpg
+    - assets/harry_potter_es_a_bolcsek_kove.jpg
+    - assets/intezet.jpg
+    - assets/orient.jpg
+    - assets/pfred.jpg
+    - assets/tuskevar.jpg
+    - assets/kod.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
