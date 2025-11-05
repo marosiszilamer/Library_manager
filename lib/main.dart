@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mysql_client/mysql_client.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -87,6 +89,46 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
+  void initState() {
+    super.initState();
+    _initConnection();
+  }
+
+  Future<void> _initConnection() async {
+    final _conn = await MySQLConnection.createConnection(
+      host: "127.0.0.1",
+      port: 3309,
+      userName: "root",
+      password: "12345",
+      databaseName: "library_manager",
+    );
+    try {
+      await _conn.connect();
+      final result = await _conn.execute('SELECT * FROM users');
+      for (var element in result.rows) {
+        final data = element.assoc();
+        // Use debugPrint to avoid flooding stdout in release builds
+        debugPrint(
+          'Id: ${data['user_id']}, Username: ${data['username']}, Password: ${data['password_hash']}',
+        );
+      }
+
+      // If you need to update UI state based on results:
+      // setState(() { loggedIn = true; /* ... */ });
+    } catch (e, st) {
+      debugPrint('DB connection error: $e\n$st');
+      // handle error (show message, retry, etc.)
+    }
+    void dispose() {
+      // close connection if initialized; close() may be async depending on package
+      try {
+        _conn.close();
+      } catch (_) {}
+      super.dispose();
+    }
+  }
+
+  @override
   bool showRegister = false;
   bool loggedIn = false;
   bool isAdmin = false;
