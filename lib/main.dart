@@ -99,7 +99,6 @@ class _AuthPageState extends State<AuthPage> {
   final registerEmailController = TextEditingController();
   final registerPasswordController = TextEditingController();
   final registerUsernameController = TextEditingController();
-  final registerPhoneController = TextEditingController();
   final registerConfirmController = TextEditingController();
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
@@ -128,6 +127,7 @@ class _AuthPageState extends State<AuthPage> {
           final priceNum =
               double.tryParse((map['price'] ?? '0').toString()) ?? 0.0;
           return {
+            'book_id': map['book_id']?.toString() ?? '',
             'title': map['title']?.toString() ?? '',
             // If author name not provided, show placeholder using author_id
             'author':
@@ -229,7 +229,6 @@ class _AuthPageState extends State<AuthPage> {
     searchController.dispose();
     registerUsernameController.dispose();
     registerEmailController.dispose();
-    registerPhoneController.dispose();
     registerPasswordController.dispose();
     registerConfirmController.dispose();
     super.dispose();
@@ -323,7 +322,6 @@ class _AuthPageState extends State<AuthPage> {
     if (!(_registerFormKey.currentState?.validate() ?? false)) return;
     final username = registerUsernameController.text.trim();
     final email = registerEmailController.text.trim();
-    final phone = registerPhoneController.text.trim();
     final password = registerPasswordController.text;
     final confirm = registerConfirmController.text;
     if (password != confirm) {
@@ -342,9 +340,8 @@ class _AuthPageState extends State<AuthPage> {
           'action': 'create',
           'username': username,
           'email': email,
-          'phone': phone,
           'password': password,
-          'role': 'user',
+          'role': 'customer',
         }),
       );
 
@@ -589,6 +586,20 @@ class _AuthPageState extends State<AuthPage> {
                           builder: (_) => FavoritesDialog(
                             favorites: favorites,
                             onRemove: toggleFavorite,
+                            onOpen: (book) {
+                              // Navigate to book detail when a favorite is tapped
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => BookDetailPage(
+                                    book: book,
+                                    addToCart: addToCart,
+                                    inCart: isInCart(book),
+                                    loggedIn: loggedIn,
+                                    username: userEmail,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         );
                       },
@@ -804,22 +815,6 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
-                          controller: registerPhoneController,
-                          decoration: const InputDecoration(
-                            hintText: 'Telefonszám',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: TextInputType.phone,
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return 'Kérlek add meg a telefonszámod.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
                           controller: registerPasswordController,
                           decoration: const InputDecoration(
                             hintText: 'Jelszó',
@@ -948,6 +943,8 @@ class _AuthPageState extends State<AuthPage> {
                                 book: b,
                                 addToCart: addToCart,
                                 inCart: isInCart(b),
+                                loggedIn: loggedIn,
+                                username: userEmail,
                               ),
                             ),
                           ),
@@ -1043,20 +1040,121 @@ class _AuthPageState extends State<AuthPage> {
   }
 }
 
-class BookDetailPage extends StatelessWidget {
+class BookDetailPage extends StatefulWidget {
   final Map<String, String> book;
   final void Function(Map<String, String> book) addToCart;
   final bool inCart;
+  final bool loggedIn;
+  final String username;
 
   const BookDetailPage({
     super.key,
     required this.book,
     required this.addToCart,
     this.inCart = false,
+    this.loggedIn = false,
+    this.username = '',
   });
 
   @override
+  State<BookDetailPage> createState() => _BookDetailPageState();
+}
+
+class _BookDetailPageState extends State<BookDetailPage> {
+  List<Map<String, dynamic>> reviews = [];
+  int selectedRating = 5;
+  final commentController = TextEditingController();
+  bool loadingReviews = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReviews();
+  }
+
+  @override
+  void dispose() {
+    commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchReviews() async {
+    final bookId = widget.book['book_id'] ?? widget.book['title'] ?? '';
+    if (bookId.isEmpty) return;
+    setState(() => loadingReviews = true);
+    try {
+      final uri = Uri.parse(
+        'http://localhost/library_api/reviews_api.php?book_id=${Uri.encodeComponent(bookId)}',
+      );
+      final resp = await http.get(uri);
+      if (resp.statusCode == 200) {
+        final List<dynamic> data = json.decode(resp.body) as List<dynamic>;
+        reviews = data.map((e) => (e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('Failed to load reviews: $e');
+    }
+    setState(() => loadingReviews = false);
+  }
+
+  double _avgRating() {
+    if (reviews.isEmpty) return 0.0;
+    final sum = reviews.fold<int>(0, (s, r) => s + (r['rating'] as int));
+    return sum / reviews.length;
+  }
+
+  Future<void> _submitReview() async {
+    if (!widget.loggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kérlek jelentkezz be a vélemény beküldéséhez.'),
+        ),
+      );
+      return;
+    }
+    final bookId = widget.book['book_id'] ?? widget.book['title'] ?? '';
+    if (bookId.isEmpty) return;
+    final uri = Uri.parse('http://localhost/library_api/reviews_api.php');
+    try {
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'action': 'create',
+          'book_id': bookId,
+          'username': widget.username,
+          'rating': selectedRating,
+          'comment': commentController.text.trim(),
+        }),
+      );
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body) as Map<String, dynamic>?;
+        if (data != null && data['success'] == true) {
+          commentController.clear();
+          await _fetchReviews();
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Vélemény mentve.')));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hiba: ${data?['message'] ?? resp.body}')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Szerver hiba: ${resp.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Hálózati hiba: $e')));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final book = widget.book;
     return Scaffold(
       appBar: AppBar(
         title: Text(book['title'] ?? 'Könyv'),
@@ -1067,86 +1165,202 @@ class BookDetailPage extends StatelessWidget {
         child: Container(
           width: 900,
           padding: const EdgeInsets.all(20),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      height: 360,
-                      width: 240,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: buildCoverWidget(
-                        book['image'],
-                        width: 240,
-                        height: 360,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      book['author'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                flex: 6,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      book['title'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (book['price'] != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6, bottom: 8),
-                        child: Text(
-                          '${book['price']} Ft',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Color(0xFF4A2C2A),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 360,
+                          width: 240,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: buildCoverWidget(
+                            book['image'],
+                            width: 240,
+                            height: 360,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                      ),
-                    const SizedBox(height: 12),
-                    Text(
-                      book['description'] ?? 'Nincs leírás',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        if (book['pages'] != null) ...[
-                          const Icon(Icons.menu_book, size: 16),
-                          const SizedBox(width: 6),
-                          Text('${book['pages']} kiadasú'),
-                          const SizedBox(width: 18),
-                        ],
-                        if (book['language'] != null) ...[
-                          const Icon(Icons.language, size: 16),
-                          const SizedBox(width: 6),
-                          Text(book['language']!),
-                        ],
+                        const SizedBox(height: 12),
+                        Text(
+                          book['author'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    flex: 6,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            book['title'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (book['price'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6, bottom: 8),
+                              child: Text(
+                                '${book['price']} Ft',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: Color(0xFF4A2C2A),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          Text(
+                            book['description'] ?? 'Nincs leírás',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              if (book['pages'] != null) ...[
+                                const Icon(Icons.menu_book, size: 16),
+                                const SizedBox(width: 6),
+                                Text('${book['pages']} kiadasú'),
+                                const SizedBox(width: 18),
+                              ],
+                              if (book['language'] != null) ...[
+                                const Icon(Icons.language, size: 16),
+                                const SizedBox(width: 6),
+                                Text(book['language']!),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          // Reviews summary
+                          Row(
+                            children: [
+                              const Text(
+                                'Értékelés: ',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Row(
+                                children: List.generate(5, (i) {
+                                  final avg = _avgRating();
+                                  return Icon(
+                                    Icons.star,
+                                    size: 18,
+                                    color: (i < avg.round())
+                                        ? Colors.amber
+                                        : Colors.grey[300],
+                                  );
+                                }),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                reviews.isEmpty
+                                    ? 'Nincs értékelés'
+                                    : '${_avgRating().toStringAsFixed(1)} (${reviews.length})',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          // Reviews list
+                          loadingReviews
+                              ? const Center(child: CircularProgressIndicator())
+                              : Column(
+                                  children: reviews
+                                      .map(
+                                        (r) => ListTile(
+                                          title: Row(
+                                            children: [
+                                              Text(r['username'] ?? 'Anon'),
+                                              const SizedBox(width: 8),
+                                              Row(
+                                                children: List.generate(
+                                                  5,
+                                                  (i) => Icon(
+                                                    Icons.star,
+                                                    size: 14,
+                                                    color:
+                                                        (i <
+                                                            (r['rating']
+                                                                as int))
+                                                        ? Colors.amber
+                                                        : Colors.grey[300],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          subtitle: Text(r['comment'] ?? ''),
+                                          trailing: Text(r['created_at'] ?? ''),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                          const SizedBox(height: 12),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          // Submit form
+                          widget.loggedIn
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Írd meg a véleményed'),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: List.generate(5, (i) {
+                                        final idx = i + 1;
+                                        return IconButton(
+                                          icon: Icon(
+                                            idx <= selectedRating
+                                                ? Icons.star
+                                                : Icons.star_border,
+                                            color: idx <= selectedRating
+                                                ? Colors.amber
+                                                : Colors.grey,
+                                          ),
+                                          onPressed: () => setState(
+                                            () => selectedRating = idx,
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                    TextField(
+                                      controller: commentController,
+                                      maxLines: 3,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Vélemény (opcionális)',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton(
+                                      onPressed: _submitReview,
+                                      child: const Text('Küldés'),
+                                    ),
+                                  ],
+                                )
+                              : const Text(
+                                  'Jelentkezz be a vélemény küldéséhez.',
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1156,15 +1370,17 @@ class BookDetailPage extends StatelessWidget {
         padding: const EdgeInsets.all(20.0),
         child: ElevatedButton.icon(
           icon: const Icon(Icons.add_shopping_cart),
-          label: Text(inCart ? 'Már a kosárban' : 'Kosárba'),
+          label: Text(widget.inCart ? 'Már a kosárban' : 'Kosárba'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: inCart ? Colors.grey : const Color(0xFF4A2C2A),
+            backgroundColor: widget.inCart
+                ? Colors.grey
+                : const Color(0xFF4A2C2A),
             foregroundColor: Colors.white,
           ),
-          onPressed: inCart
+          onPressed: widget.inCart
               ? null
               : () {
-                  addToCart(book);
+                  widget.addToCart(widget.book);
                   Navigator.pop(context);
                 },
         ),
@@ -1267,11 +1483,13 @@ class CartDialog extends StatelessWidget {
 class FavoritesDialog extends StatelessWidget {
   final List<Map<String, String>> favorites;
   final void Function(Map<String, String> book) onRemove;
+  final void Function(Map<String, String> book)? onOpen;
 
   const FavoritesDialog({
     super.key,
     required this.favorites,
     required this.onRemove,
+    this.onOpen,
   });
 
   @override
@@ -1289,6 +1507,10 @@ class FavoritesDialog extends StatelessWidget {
                     (book) => ListTile(
                       title: Text(book['title'] ?? ''),
                       subtitle: Text(book['author'] ?? ''),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        if (onOpen != null) onOpen!(book);
+                      },
                       trailing: IconButton(
                         icon: const Icon(Icons.delete),
                         onPressed: () {
@@ -1617,9 +1839,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4A2C2A),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Rendelés véglegesítése'),
+                child: const Text('Rendelés leadása'),
               ),
             ),
           ],
