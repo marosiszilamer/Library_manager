@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -114,6 +115,8 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   List<Map<String, String>> books = [];
+  List<String> categories = ['Minden'];
+  String selectedCategory = 'Minden';
 
   /// Load books from `books_api.php` and map fields to the UI structure.
   Future<void> _loadBooks() async {
@@ -126,13 +129,17 @@ class _AuthPageState extends State<AuthPage> {
           final map = (e as Map<String, dynamic>);
           final priceNum =
               double.tryParse((map['price'] ?? '0').toString()) ?? 0.0;
+          final authorName =
+              map['author_name']?.toString() ?? map['author']?.toString() ?? '';
+          final authorPlaceholder = authorName.isNotEmpty
+              ? authorName
+              : 'Szerző ${map['author_id'] ?? ''}';
           return {
             'book_id': map['book_id']?.toString() ?? '',
             'title': map['title']?.toString() ?? '',
-            // If author name not provided, show placeholder using author_id
-            'author':
-                map['author_name']?.toString() ??
-                'Szerző ${map['author_id'] ?? ''}',
+            // Provide both 'author' and 'author_name' keys so UI can use either
+            'author': authorPlaceholder,
+            'author_name': authorName,
             'description': map['description']?.toString() ?? '',
             'pages': map['published_year']?.toString() ?? '',
             'language': map['language']?.toString() ?? 'magyar',
@@ -141,11 +148,27 @@ class _AuthPageState extends State<AuthPage> {
                 map['image']?.toString() ??
                 '',
             'price': priceNum.toInt().toString(),
+            // Map category and stock from API (category_name provided by books_api)
+            'category':
+                map['category_name']?.toString() ??
+                map['category']?.toString() ??
+                '',
+            'stock': (map['stock'] ?? '').toString(),
           };
         }).toList();
 
+        // build category list from returned books (safe fallback to 'Minden')
+        final catSet = <String>{'Minden'};
+        for (final m in mapped) {
+          final c = (m['category'] ?? '').toString();
+          if (c.isNotEmpty) catSet.add(c);
+        }
         setState(() {
           books = mapped;
+          categories = catSet.toList();
+          // keep current selection if still available
+          if (!categories.contains(selectedCategory))
+            selectedCategory = 'Minden';
         });
       } else {
         debugPrint('Books API returned ${resp.statusCode}');
@@ -532,6 +555,41 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ),
                     const SizedBox(width: 12),
+                    // Category filter dropdown
+                    SizedBox(
+                      width: 180,
+                      height: 40,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: selectedCategory,
+                              items: categories
+                                  .map(
+                                    (c) => DropdownMenuItem<String>(
+                                      value: c,
+                                      child: Text(
+                                        c,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) => setState(() {
+                                selectedCategory = v ?? 'Minden';
+                              }),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Stack(
                       children: [
                         IconButton(
@@ -891,7 +949,13 @@ class _AuthPageState extends State<AuthPage> {
     final filtered = books.where((b) {
       final t = b['title']!.toLowerCase();
       final a = b['author']!.toLowerCase();
-      return t.contains(query) || a.contains(query);
+      final matchesText = t.contains(query) || a.contains(query);
+      final cat = (b['category'] ?? '').toString();
+      final matchesCategory =
+          (selectedCategory == 'Minden' || selectedCategory.isEmpty)
+          ? true
+          : (cat == selectedCategory);
+      return matchesText && matchesCategory;
     }).toList();
     return Container(
       width: 1000,
@@ -995,6 +1059,35 @@ class _AuthPageState extends State<AuthPage> {
                                               color: Colors.black54,
                                               fontSize: 12,
                                             ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          // Category and stock
+                                          Row(
+                                            children: [
+                                              if ((b['category'] ?? '')
+                                                  .isNotEmpty)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        right: 8.0,
+                                                      ),
+                                                  child: Text(
+                                                    b['category']!,
+                                                    style: const TextStyle(
+                                                      color: Colors.black54,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                              if ((b['stock'] ?? '').isNotEmpty)
+                                                Text(
+                                                  'Készlet: ${b['stock']}',
+                                                  style: const TextStyle(
+                                                    color: Colors.black54,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                           const SizedBox(height: 6),
                                           if (b['price'] != null)
@@ -1225,6 +1318,31 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 ),
                               ),
                             ),
+                          const SizedBox(height: 8),
+                          // Category and stock on detail page
+                          Row(
+                            children: [
+                              if ((book['category'] ?? '').isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 12.0),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.category, size: 16),
+                                      const SizedBox(width: 6),
+                                      Text(book['category'] ?? ''),
+                                    ],
+                                  ),
+                                ),
+                              if ((book['stock'] ?? '').isNotEmpty)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.storage, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text('Készlet: ${book['stock']}'),
+                                  ],
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             book['description'] ?? 'Nincs leírás',
@@ -1561,6 +1679,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final cityController = TextEditingController();
   final houseNumberController = TextEditingController();
   final postalCodeController = TextEditingController();
+  // Payment method state
+  String paymentMethod = 'készpénz'; // 'bankkártya', 'PayPal', 'készpénz'
+  final cardNameController = TextEditingController();
+  final cardNumberController = TextEditingController();
+  final cardExpiryController = TextEditingController();
+  final cardCvvController = TextEditingController();
 
   @override
   void dispose() {
@@ -1572,6 +1696,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
     cityController.dispose();
     houseNumberController.dispose();
     postalCodeController.dispose();
+    cardNameController.dispose();
+    cardNumberController.dispose();
+    cardExpiryController.dispose();
+    cardCvvController.dispose();
     super.dispose();
   }
 
@@ -1593,11 +1721,43 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ).showSnackBar(const SnackBar(content: Text('A kosár üres.')));
       return;
     }
-    // Simulate order placement
+    // If bank card selected, validate card fields
+    if (paymentMethod == 'bankkártya') {
+      final cardNum = cardNumberController.text.replaceAll(' ', '');
+      final cvv = cardCvvController.text.trim();
+      final expiry = cardExpiryController.text.trim();
+      final name = cardNameController.text.trim();
+      // Basic validation: name present, card number length between 12 and 16,
+      // expiry length between 3 and 4, CVV exactly 3 digits.
+      if (name.isEmpty ||
+          cardNum.length < 12 ||
+          cardNum.length > 16 ||
+          cvv.length != 3 ||
+          expiry.length < 3 ||
+          expiry.length > 4) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Kérlek add meg a bankkártya adatait helyesen (név, 12–16 számjegy kártyaszám, lejárat MMYY max 4 számjegy, 3 jegyű CVV).',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    // Simulate order placement - include payment method in message
     widget.onOrderPlaced();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Rendelés leadva!')));
+    String payMsg = paymentMethod == 'bankkártya'
+        ? 'Bankkártya'
+        : (paymentMethod == 'PayPal' ? 'PayPal' : 'Készpénz');
+    String masked = '';
+    if (paymentMethod == 'bankkártya') {
+      final num = cardNumberController.text.replaceAll(' ', '');
+      if (num.length >= 4) masked = ' •••• ${num.substring(num.length - 4)}';
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Rendelés leadva! Fizetés: $payMsg$masked')),
+    );
     Navigator.of(context).pop();
   }
 
@@ -1825,11 +1985,105 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'A rendelés leadását követően a fizetés csak készpénzzel megvalósítható.',
-              style: TextStyle(fontSize: 14, color: Colors.red),
-              textAlign: TextAlign.center,
+
+            const SizedBox(height: 12),
+            // Payment method selection (készpénz / bankkártya / PayPal)
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Fizetési mód',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Készpénz'),
+                    value: 'készpénz',
+                    groupValue: paymentMethod,
+                    onChanged: (v) =>
+                        setState(() => paymentMethod = v ?? 'készpénz'),
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Bankkártya'),
+                    value: 'bankkártya',
+                    groupValue: paymentMethod,
+                    onChanged: (v) =>
+                        setState(() => paymentMethod = v ?? 'bankkártya'),
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('PayPal'),
+                    value: 'PayPal',
+                    groupValue: paymentMethod,
+                    onChanged: (v) =>
+                        setState(() => paymentMethod = v ?? 'PayPal'),
+                  ),
+                  if (paymentMethod == 'bankkártya') ...[
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: cardNameController,
+                      decoration: const InputDecoration(
+                        hintText: 'Kártyabirtokos neve',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: cardNumberController,
+                      decoration: const InputDecoration(
+                        hintText: 'Kártyaszám',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(16),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: cardExpiryController,
+                            decoration: const InputDecoration(
+                              hintText: 'Érvényesség (MMYY)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(4),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 120,
+                          child: TextFormField(
+                            controller: cardCvvController,
+                            decoration: const InputDecoration(
+                              hintText: 'CVV',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(3),
+                            ],
+                            obscureText: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
