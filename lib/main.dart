@@ -21,6 +21,186 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class ProfilePage extends StatefulWidget {
+  final String username;
+
+  const ProfilePage({super.key, required this.username});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  Map<String, dynamic>? user;
+  List<dynamic> orders = [];
+  bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() => loading = true);
+    try {
+      // Load user info
+      final uResp = await http.get(
+        Uri.parse('http://localhost/library_api/users_api.php'),
+      );
+      if (uResp.statusCode == 200) {
+        final List<dynamic> list = json.decode(uResp.body) as List<dynamic>;
+        final found = list.cast<Map<String, dynamic>>().firstWhere(
+          (u) => (u['username'] ?? '').toString() == widget.username,
+          orElse: () => {},
+        );
+        if (found.isNotEmpty) user = found;
+      }
+
+      // Load orders for this user
+      final ordersUri = Uri.parse(
+        'http://localhost/library_api/orders_api.php?username=${Uri.encodeComponent(widget.username)}',
+      );
+      final oResp = await http.get(ordersUri);
+      if (oResp.statusCode == 200) {
+        final data = json.decode(oResp.body);
+        if (data is List) orders = data;
+      }
+    } catch (e) {
+      debugPrint('Failed to load profile/orders: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hiba a profil betöltése közben: $e')),
+      );
+    }
+    setState(() => loading = false);
+  }
+
+  Widget _buildUserInfo() {
+    if (user == null) return const Text('Felhasználó adatai nem elérhetők');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Felhasználónév: ${user!['username'] ?? ''}'),
+        const SizedBox(height: 6),
+        Text('Email: ${user!['email'] ?? ''}'),
+        const SizedBox(height: 6),
+        Text('Regisztráció ideje: ${user!['registration_date'] ?? ''}'),
+        const SizedBox(height: 6),
+        Text('Szerepkör: ${user!['role'] ?? ''}'),
+      ],
+    );
+  }
+
+  Widget _buildOrders() {
+    if (orders.isEmpty) return const Text('Nincs korábbi rendelésed.');
+    return Column(
+      children: orders.map((o) {
+        final items = (o['items'] as List<dynamic>?) ?? [];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Rendelés #${o['order_id'] ?? ''}'),
+                    Text(o['created_at'] ?? ''),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Column(
+                  children: items.map<Widget>((it) {
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          it['cover_image'] != null &&
+                              (it['cover_image'] as String).isNotEmpty
+                          ? SizedBox(
+                              width: 48,
+                              child: buildCoverWidget(
+                                it['cover_image'],
+                                width: 48,
+                                height: 64,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(Icons.book),
+                      title: Text(it['title'] ?? ''),
+                      subtitle: Text(
+                        '${it['author_name'] ?? ''} • ${it['quantity'] ?? 0} db',
+                      ),
+                      trailing: Text('${it['unit_price'] ?? 0} Ft'),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Végösszeg: ${o['total_amount'] ?? 0} Ft',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profil'),
+        backgroundColor: const Color(0xFF4A2C2A),
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black12, blurRadius: 6),
+                      ],
+                    ),
+                    child: _buildUserInfo(),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Rendeléseim',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildOrders(),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _loadProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A2C2A),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Újratöltés'),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
 // Helper cover image
 Widget buildCoverWidget(
   String? path, {
@@ -678,6 +858,30 @@ class _AuthPageState extends State<AuthPage> {
                         child: const Text('Új könyv'),
                       ),
                     const SizedBox(width: 8),
+                    // Profile button
+                    IconButton(
+                      icon: const Icon(
+                        Icons.account_circle,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        if (!loggedIn) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Jelentkezz be a profil megtekintéséhez.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ProfilePage(username: userEmail),
+                          ),
+                        );
+                      },
+                    ),
                     ElevatedButton(
                       onPressed: _logout,
                       style: ElevatedButton.styleFrom(
@@ -1054,7 +1258,9 @@ class _AuthPageState extends State<AuthPage> {
                                           ),
                                           const SizedBox(height: 6),
                                           Text(
-                                            b['author'] ?? '',
+                                            b['author_name'] ??
+                                                b['author'] ??
+                                                '',
                                             style: const TextStyle(
                                               color: Colors.black54,
                                               fontSize: 12,
@@ -1103,6 +1309,35 @@ class _AuthPageState extends State<AuthPage> {
                                       ),
                                     ),
                                   ],
+                                ),
+                                // Add to cart button positioned at the bottom of the card
+                                Positioned(
+                                  left: 8,
+                                  right: 8,
+                                  bottom: 8,
+                                  child: SizedBox(
+                                    height: 40,
+                                    child: ElevatedButton.icon(
+                                      onPressed: isInCart(b)
+                                          ? null
+                                          : () {
+                                              addToCart(b);
+                                              setState(() {});
+                                            },
+                                      icon: const Icon(Icons.add_shopping_cart),
+                                      label: Text(
+                                        isInCart(b)
+                                            ? 'Már a kosárban'
+                                            : 'Kosárba',
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: isInCart(b)
+                                            ? Colors.grey
+                                            : const Color(0xFF4A2C2A),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                                 Positioned(
                                   top: 8,
@@ -1172,7 +1407,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   Future<void> _fetchReviews() async {
-    final bookId = widget.book['book_id'] ?? widget.book['title'] ?? '';
+    final bookId = widget.book['book_id'] ?? '';
     if (bookId.isEmpty) return;
     setState(() => loadingReviews = true);
     try {
@@ -1205,7 +1440,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
       );
       return;
     }
-    final bookId = widget.book['book_id'] ?? widget.book['title'] ?? '';
+    final bookId = widget.book['book_id'] ?? '';
     if (bookId.isEmpty) return;
     final uri = Uri.parse('http://localhost/library_api/reviews_api.php');
     try {
@@ -1283,7 +1518,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          book['author'] ?? '',
+                          book['author_name'] ?? book['author'] ?? '',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1543,7 +1778,9 @@ class CartDialog extends StatelessWidget {
                   ...cart.map(
                     (book) => ListTile(
                       title: Text(book['title'] ?? ''),
-                      subtitle: Text(book['author'] ?? ''),
+                      subtitle: Text(
+                        book['author_name'] ?? book['author'] ?? '',
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1624,7 +1861,9 @@ class FavoritesDialog extends StatelessWidget {
                   ...favorites.map(
                     (book) => ListTile(
                       title: Text(book['title'] ?? ''),
-                      subtitle: Text(book['author'] ?? ''),
+                      subtitle: Text(
+                        book['author_name'] ?? book['author'] ?? '',
+                      ),
                       onTap: () {
                         Navigator.of(context).pop();
                         if (onOpen != null) onOpen!(book);
@@ -1787,7 +2026,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ...widget.cart.map(
                     (book) => ListTile(
                       title: Text(book['title'] ?? ''),
-                      subtitle: Text(book['author'] ?? ''),
+                      subtitle: Text(
+                        book['author_name'] ?? book['author'] ?? '',
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

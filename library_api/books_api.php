@@ -19,21 +19,25 @@ switch ($method) {
     // <- GET – összes könyv vagy 1 könyv ID alapján
     case 'GET':
         // Return books with category name (if available) so frontend can show category
-    if (isset($_GET['book_id'])) {
-        $book_id = intval($_GET['book_id']);
-        $sql = "SELECT b.*, c.name AS category_name, a.name AS author_name
+        if (isset($_GET['book_id'])) {
+            $book_id = intval($_GET['book_id']);
+            // Use COALESCE so API always returns keys for author_name and category_name
+            $sql = "SELECT b.*, COALESCE(c.name, '') AS category_name, COALESCE(a.name, '') AS author_name
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             LEFT JOIN authors a ON a.author_id = b.author_id
-            WHERE b.book_id = $book_id";
-        $result = $conn->query($sql);
-    } else {
-        $sql = "SELECT b.*, c.name AS category_name, a.name AS author_name
+            WHERE b.book_id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param('i', $book_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+        } else {
+            $sql = "SELECT b.*, COALESCE(c.name, '') AS category_name, COALESCE(a.name, '') AS author_name
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             LEFT JOIN authors a ON a.author_id = b.author_id";
-        $result = $conn->query($sql);
-    }
+            $result = $conn->query($sql);
+        }
         $data = [];
         while ($row = $result->fetch_assoc()) {
             $data[] = $row;

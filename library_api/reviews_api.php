@@ -12,8 +12,8 @@ require_once __DIR__ . '/db_con.php'; // provides $pdo and mysqli vars
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        $book_id = $_GET['book_id'] ?? '';
-        if (trim($book_id) === '') {
+        $book_id = intval($_GET['book_id'] ?? 0);
+        if ($book_id <= 0) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'book_id required']);
             exit;
@@ -58,12 +58,12 @@ try {
         $action = $input['action'] ?? '';
 
         if ($action === 'create') {
-            $book_id = $input['book_id'] ?? '';
+            $book_id = intval($input['book_id'] ?? 0);
             $customer_id = isset($input['customer_id']) ? intval($input['customer_id']) : null;
             $rating = intval($input['rating'] ?? 0);
             $comment = $input['comment'] ?? null;
 
-            if (trim($book_id) === '' || $rating < 1 || $rating > 5) {
+            if ($book_id <= 0 || $rating < 1 || $rating > 5) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'book_id and rating (1-5) required']);
                 exit;
