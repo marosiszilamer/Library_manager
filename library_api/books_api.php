@@ -21,8 +21,11 @@ switch ($method) {
         // Return books with category name (if available) so frontend can show category
         if (isset($_GET['book_id'])) {
             $book_id = intval($_GET['book_id']);
-            // Use COALESCE so API always returns keys for author_name and category_name
-            $sql = "SELECT b.*, COALESCE(c.name, '') AS category_name, COALESCE(a.name, '') AS author_name
+            // Explicitly select fields so `isbn` and `publisher` are always returned
+            $sql = "SELECT b.book_id, b.title, b.price, b.stock,
+                       COALESCE(b.isbn, '') AS isbn, COALESCE(b.publisher, '') AS publisher,
+                       b.published_year, b.description, b.cover_image,
+                       COALESCE(c.name, '') AS category_name, COALESCE(a.name, '') AS author_name
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             LEFT JOIN authors a ON a.author_id = b.author_id
@@ -32,7 +35,11 @@ switch ($method) {
             $stmt->execute();
             $result = $stmt->get_result();
         } else {
-            $sql = "SELECT b.*, COALESCE(c.name, '') AS category_name, COALESCE(a.name, '') AS author_name
+            // Explicitly select fields so `isbn` and `publisher` are included for every book
+            $sql = "SELECT b.book_id, b.title, b.price, b.stock,
+                       COALESCE(b.isbn, '') AS isbn, COALESCE(b.publisher, '') AS publisher,
+                       b.published_year, b.description, b.cover_image,
+                       COALESCE(c.name, '') AS category_name, COALESCE(a.name, '') AS author_name
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             LEFT JOIN authors a ON a.author_id = b.author_id";

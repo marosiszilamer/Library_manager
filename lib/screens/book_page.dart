@@ -68,12 +68,20 @@ class _BookPageState extends State<BookPage> {
               itemCount: books.length,
               itemBuilder: (context, index) {
                 final book = books[index];
+                final id = int.tryParse(book['book_id']?.toString() ?? '') ?? 0;
                 return ListTile(
                   title: Text(book['title']),
-                  subtitle: Text("ID: ${book['book_id']}"),
+                  isThreeLine: true,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Publisher: ${book['publisher'] ?? ''}"),
+                      Text("ISBN: ${book['isbn'] ?? ''}"),
+                    ],
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => deleteBook(int.parse(book['book_id'])),
+                    onPressed: () => deleteBook(id),
                   ),
                 );
               },

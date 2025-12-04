@@ -321,6 +321,8 @@ class _AuthPageState extends State<AuthPage> {
             'author': authorPlaceholder,
             'author_name': authorName,
             'description': map['description']?.toString() ?? '',
+            'publisher': map['publisher']?.toString() ?? '',
+            'isbn': map['isbn']?.toString() ?? '',
             'pages': map['published_year']?.toString() ?? '',
             'language': map['language']?.toString() ?? 'magyar',
             'image':
@@ -1469,9 +1471,20 @@ class _BookDetailPageState extends State<BookDetailPage> {
           );
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Szerver hiba: ${resp.statusCode}')),
-        );
+        // Try to show server response body (may contain error message)
+        String msg = 'Szerver hiba: ${resp.statusCode}';
+        try {
+          final body = json.decode(resp.body);
+          if (body is Map && body['message'] != null)
+            msg = 'Hiba: ${body['message']}';
+          else
+            msg = resp.body.toString();
+        } catch (_) {
+          // ignore JSON parse error
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       ScaffoldMessenger.of(
@@ -1583,7 +1596,44 @@ class _BookDetailPageState extends State<BookDetailPage> {
                             book['description'] ?? 'Nincs leírás',
                             style: const TextStyle(fontSize: 14),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 12),
+                          // Publisher and ISBN (show if present)
+                          if ((book['publisher'] ?? '')
+                              .toString()
+                              .isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 6.0,
+                                bottom: 6.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.business, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text('Kiadó: ${book['publisher']}'),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if ((book['isbn'] ?? '').toString().isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 0.0,
+                                bottom: 6.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.confirmation_number,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text('ISBN: ${book['isbn']}'),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               if (book['pages'] != null) ...[
