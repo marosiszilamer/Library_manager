@@ -1502,270 +1502,296 @@ class _BookDetailPageState extends State<BookDetailPage> {
         backgroundColor: const Color(0xFF4A2C2A),
         foregroundColor: Colors.white,
       ),
-      body: Center(
-        child: Container(
-          width: 900,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 360,
-                          width: 240,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: buildCoverWidget(
-                            book['image'],
-                            width: 240,
-                            height: 360,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          book['author_name'] ?? book['author'] ?? '',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    flex: 6,
-                    child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Center(
+          child: Container(
+            width: 900,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              MediaQuery.of(context).padding.bottom + 80,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Container(
+                            height: 360,
+                            width: 240,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: buildCoverWidget(
+                              book['image'],
+                              width: 240,
+                              height: 360,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           Text(
-                            book['title'] ?? '',
+                            book['author_name'] ?? book['author'] ?? '',
                             style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (book['price'] != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6, bottom: 8),
-                              child: Text(
-                                '${book['price']} Ft',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: Color(0xFF4A2C2A),
-                                ),
-                              ),
-                            ),
-                          const SizedBox(height: 8),
-                          // Category and stock on detail page
-                          Row(
-                            children: [
-                              if ((book['category'] ?? '').isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 12.0),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.category, size: 16),
-                                      const SizedBox(width: 6),
-                                      Text(book['category'] ?? ''),
-                                    ],
-                                  ),
-                                ),
-                              if ((book['stock'] ?? '').isNotEmpty)
-                                Row(
-                                  children: [
-                                    const Icon(Icons.storage, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text('Készlet: ${book['stock']}'),
-                                  ],
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            book['description'] ?? 'Nincs leírás',
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                          const SizedBox(height: 12),
-                          // Publisher and ISBN (show if present)
-                          if ((book['publisher'] ?? '')
-                              .toString()
-                              .isNotEmpty) ...[
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 6.0,
-                                bottom: 6.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.business, size: 16),
-                                  const SizedBox(width: 6),
-                                  Text('Kiadó: ${book['publisher']}'),
-                                ],
-                              ),
-                            ),
-                          ],
-                          if ((book['isbn'] ?? '').toString().isNotEmpty) ...[
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 0.0,
-                                bottom: 6.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.confirmation_number,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text('ISBN: ${book['isbn']}'),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              if (book['pages'] != null) ...[
-                                const Icon(Icons.menu_book, size: 16),
-                                const SizedBox(width: 6),
-                                Text('${book['pages']} kiadasú'),
-                                const SizedBox(width: 18),
-                              ],
-                              if (book['language'] != null) ...[
-                                const Icon(Icons.language, size: 16),
-                                const SizedBox(width: 6),
-                                Text(book['language']!),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 18),
-                          // Reviews summary
-                          Row(
-                            children: [
-                              const Text(
-                                'Értékelés: ',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              Row(
-                                children: List.generate(5, (i) {
-                                  final avg = _avgRating();
-                                  return Icon(
-                                    Icons.star,
-                                    size: 18,
-                                    color: (i < avg.round())
-                                        ? Colors.amber
-                                        : Colors.grey[300],
-                                  );
-                                }),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                reviews.isEmpty
-                                    ? 'Nincs értékelés'
-                                    : '${_avgRating().toStringAsFixed(1)} (${reviews.length})',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          // Reviews list
-                          loadingReviews
-                              ? const Center(child: CircularProgressIndicator())
-                              : Column(
-                                  children: reviews
-                                      .map(
-                                        (r) => ListTile(
-                                          title: Row(
-                                            children: [
-                                              Text(r['username'] ?? 'Anon'),
-                                              const SizedBox(width: 8),
-                                              Row(
-                                                children: List.generate(
-                                                  5,
-                                                  (i) => Icon(
-                                                    Icons.star,
-                                                    size: 14,
-                                                    color:
-                                                        (i <
-                                                            (r['rating']
-                                                                as int))
-                                                        ? Colors.amber
-                                                        : Colors.grey[300],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          subtitle: Text(r['comment'] ?? ''),
-                                          trailing: Text(r['created_at'] ?? ''),
-                                        ),
-                                      )
-                                      .toList(),
-                                ),
-                          const SizedBox(height: 12),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          // Submit form
-                          widget.loggedIn
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Írd meg a véleményed'),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: List.generate(5, (i) {
-                                        final idx = i + 1;
-                                        return IconButton(
-                                          icon: Icon(
-                                            idx <= selectedRating
-                                                ? Icons.star
-                                                : Icons.star_border,
-                                            color: idx <= selectedRating
-                                                ? Colors.amber
-                                                : Colors.grey,
-                                          ),
-                                          onPressed: () => setState(
-                                            () => selectedRating = idx,
-                                          ),
-                                        );
-                                      }),
-                                    ),
-                                    TextField(
-                                      controller: commentController,
-                                      maxLines: 3,
-                                      decoration: const InputDecoration(
-                                        hintText: 'Vélemény (opcionális)',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ElevatedButton(
-                                      onPressed: _submitReview,
-                                      child: const Text('Küldés'),
-                                    ),
-                                  ],
-                                )
-                              : const Text(
-                                  'Jelentkezz be a vélemény küldéséhez.',
-                                ),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 6,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              book['title'] ?? '',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (book['price'] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 6,
+                                  bottom: 8,
+                                ),
+                                child: Text(
+                                  '${book['price']} Ft',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: Color(0xFF4A2C2A),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            // Category and stock on detail page
+                            Row(
+                              children: [
+                                if ((book['category'] ?? '').isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 12.0),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.category, size: 16),
+                                        const SizedBox(width: 6),
+                                        Text(book['category'] ?? ''),
+                                      ],
+                                    ),
+                                  ),
+                                if ((book['stock'] ?? '').isNotEmpty)
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.storage, size: 16),
+                                      const SizedBox(width: 6),
+                                      Text('Készlet: ${book['stock']}'),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              book['description'] ?? 'Nincs leírás',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(height: 12),
+                            // Publisher and ISBN (show if present)
+                            if ((book['publisher'] ?? '')
+                                .toString()
+                                .isNotEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 6.0,
+                                  bottom: 6.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.business, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text('Kiadó: ${book['publisher']}'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            if ((book['isbn'] ?? '').toString().isNotEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 0.0,
+                                  bottom: 6.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.confirmation_number,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text('ISBN: ${book['isbn']}'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                if (book['pages'] != null) ...[
+                                  const Icon(Icons.menu_book, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text('${book['pages']} kiadasú'),
+                                  const SizedBox(width: 18),
+                                ],
+                                if (book['language'] != null) ...[
+                                  const Icon(Icons.language, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text(book['language']!),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+                            // Reviews summary
+                            Row(
+                              children: [
+                                const Text(
+                                  'Értékelés: ',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Row(
+                                  children: List.generate(5, (i) {
+                                    final avg = _avgRating();
+                                    return Icon(
+                                      Icons.star,
+                                      size: 18,
+                                      color: (i < avg.round())
+                                          ? Colors.amber
+                                          : Colors.grey[300],
+                                    );
+                                  }),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  reviews.isEmpty
+                                      ? 'Nincs értékelés'
+                                      : '${_avgRating().toStringAsFixed(1)} (${reviews.length})',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            // Refresh button for reviews
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: _fetchReviews,
+                                  icon: const Icon(Icons.refresh, size: 18),
+                                  label: const Text('Frissítés'),
+                                ),
+                              ],
+                            ),
+                            // Reviews list
+                            loadingReviews
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : Column(
+                                    children: reviews
+                                        .map(
+                                          (r) => ListTile(
+                                            title: Row(
+                                              children: [
+                                                Text(r['username'] ?? 'Anon'),
+                                                const SizedBox(width: 8),
+                                                Row(
+                                                  children: List.generate(
+                                                    5,
+                                                    (i) => Icon(
+                                                      Icons.star,
+                                                      size: 14,
+                                                      color:
+                                                          (i <
+                                                              (r['rating']
+                                                                  as int))
+                                                          ? Colors.amber
+                                                          : Colors.grey[300],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            subtitle: Text(r['comment'] ?? ''),
+                                            trailing: Text(
+                                              r['created_at'] ?? '',
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                            const SizedBox(height: 12),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            // Submit form
+                            widget.loggedIn
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Írd meg a véleményed'),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: List.generate(5, (i) {
+                                          final idx = i + 1;
+                                          return IconButton(
+                                            icon: Icon(
+                                              idx <= selectedRating
+                                                  ? Icons.star
+                                                  : Icons.star_border,
+                                              color: idx <= selectedRating
+                                                  ? Colors.amber
+                                                  : Colors.grey,
+                                            ),
+                                            onPressed: () => setState(
+                                              () => selectedRating = idx,
+                                            ),
+                                          );
+                                        }),
+                                      ),
+                                      TextField(
+                                        controller: commentController,
+                                        maxLines: 3,
+                                        decoration: const InputDecoration(
+                                          hintText: 'Vélemény (opcionális)',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ElevatedButton(
+                                        onPressed: _submitReview,
+                                        child: const Text('Küldés'),
+                                      ),
+                                    ],
+                                  )
+                                : const Text(
+                                    'Jelentkezz be a vélemény küldéséhez.',
+                                  ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
