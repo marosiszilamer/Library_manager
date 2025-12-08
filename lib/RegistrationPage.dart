@@ -16,6 +16,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   void dispose() {
+    final _formKey = GlobalKey<FormState>();
     _usernameController.dispose();
     _passwordController.dispose();
     _emailController.dispose();
@@ -28,11 +29,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   Future<void> _onRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Itt jöhet a regisztrációs logika, pl. HTTP kérés a szerver felé
-
     setState(() => _isLoading = true);
     try {
-      // Itt jönne a valódi regisztrációs hívás (pl. Firebase vagy API)
       await Future.delayed(const Duration(milliseconds: 800));
 
       final email = _emailController.text.trim();
@@ -56,6 +54,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String? _validateUserName(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return 'Add meg az email címet';
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (!emailRegex.hasMatch(v)) return 'Nem érvényes email formátum';
+    return null;
   }
 
   String? _validateEmail(String? value) {
@@ -82,7 +88,74 @@ class _RegistrationPageState extends State<RegistrationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Regisztráció')),
-      body: Center(child: Text('Regisztrációs oldal tartalma ide kerül')),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 16),
+          Text(
+            'Vissza a bejelentkezéshez',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+
+          const SizedBox(height: 24),
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _usernameController,
+                  keyboardType: TextInputType.text,
+                  decoration: const InputDecoration(
+                    labelText: 'Felhasználónév',
+                    hintText: 'pl. username',
+                    border: OutlineInputBorder(),
+                  ),
+
+                  validator: _validateUserName,
+                  autofillHints: const [AutofillHints.username],
+                ),
+
+                /* const SizedBox(height: 16),
+                TextFormField(
+                  controller: pass,
+                  obscureText: _obscure,
+                  decoration: InputDecoration(
+                    labelText: 'Jelszó',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      tooltip: _obscure
+                          ? 'Jelszó megjelenítése'
+                          : 'Jelszó elrejtése',
+                      icon: Icon(
+                        _obscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: _validatePassword,
+                  autofillHints: const [AutofillHints.password],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : _onLogin,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Belépés'),
+                  ),
+                ),*/
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

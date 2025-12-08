@@ -3,6 +3,7 @@ import 'RegistrationPage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LogInPage extends StatefulWidget {
   @override
@@ -28,7 +29,7 @@ class _LogInPageState extends State<LogInPage> {
 
     setState(() => _isLoading = true);
     try {
-      var url = Uri.parse('http://192.168.1.7:80/library_api/client_login.php');
+      var url = Uri.parse('http://10.86.199.4:80/library_api/client_login.php');
       var response = await http.post(
         url,
         body: {'username': user.text, 'password': pass.text},
@@ -40,6 +41,9 @@ class _LogInPageState extends State<LogInPage> {
       final success;
 
       if (data == "Success") {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('loggedIn', true);
+
         success = true;
       } else {
         success = false;
@@ -59,6 +63,7 @@ class _LogInPageState extends State<LogInPage> {
         ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
       }
     } catch (e) {
+      Text('Bejelentkezési hiba: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
