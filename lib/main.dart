@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'config/api_config.dart';
 
 void main() {
   runApp(const MyApp());
@@ -45,9 +46,7 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => loading = true);
     try {
       // Load user info
-      final uResp = await http.get(
-        Uri.parse('http://localhost/library_api/users_api.php'),
-      );
+      final uResp = await http.get(Uri.parse(ApiConfig.usersApi));
       if (uResp.statusCode == 200) {
         final List<dynamic> list = json.decode(uResp.body) as List<dynamic>;
         final found = list.cast<Map<String, dynamic>>().firstWhere(
@@ -59,7 +58,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       // Load orders for this user
       final ordersUri = Uri.parse(
-        'http://localhost/library_api/orders_api.php?username=${Uri.encodeComponent(widget.username)}',
+        '${ApiConfig.ordersApi}?username=${Uri.encodeComponent(widget.username)}',
       );
       final oResp = await http.get(ordersUri);
       if (oResp.statusCode == 200) {
@@ -786,6 +785,7 @@ class _AuthPageState extends State<AuthPage> {
                                   cart: cart,
                                   onAdd: addToCart,
                                   onRemove: removeFromCart,
+                                  username: userEmail,
                                   onOrderPlaced: () {
                                     setState(() {
                                       cart.clear();
@@ -1971,6 +1971,7 @@ class CheckoutPage extends StatefulWidget {
   final void Function(Map<String, dynamic> book) onAdd;
   final void Function(Map<String, dynamic> book) onRemove;
   final void Function() onOrderPlaced;
+  final String username;
 
   const CheckoutPage({
     super.key,
@@ -1978,6 +1979,7 @@ class CheckoutPage extends StatefulWidget {
     required this.onAdd,
     required this.onRemove,
     required this.onOrderPlaced,
+    required this.username,
   });
 
   @override
@@ -1995,7 +1997,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final houseNumberController = TextEditingController();
   final postalCodeController = TextEditingController();
   // Payment method state
-  String paymentMethod = 'készpénz'; // 'bankkártya', 'PayPal', 'készpénz'
+  String paymentMethod = 'utánvét'; // 'bankkártya', 'utánvét', 'PayPal'
   final cardNameController = TextEditingController();
   final cardNumberController = TextEditingController();
   final cardExpiryController = TextEditingController();
@@ -2028,7 +2030,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return total;
   }
 
-  void _placeOrder() {
+  void _placeOrder() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (widget.cart.isEmpty) {
       ScaffoldMessenger.of(
@@ -2060,20 +2062,140 @@ class _CheckoutPageState extends State<CheckoutPage> {
         return;
       }
     }
-    // Simulate order placement - include payment method in message
-    widget.onOrderPlaced();
-    String payMsg = paymentMethod == 'bankkártya'
-        ? 'Bankkártya'
-        : (paymentMethod == 'PayPal' ? 'PayPal' : 'Készpénz');
-    String masked = '';
-    if (paymentMethod == 'bankkártya') {
-      final num = cardNumberController.text.replaceAll(' ', '');
-      if (num.length >= 4) masked = ' •••• ${num.substring(num.length - 4)}';
+
+    // Map payment method to API format
+    String apiPaymentMethod = paymentMethod;
+    // paymentMethod is already in the correct format for the API
+
+    try {
+      // Get user info first
+      final userResp = await http.get(Uri.parse(ApiConfig.usersApi));
+      if (userResp.statusCode != 200) {
+        throw Exception('Felhasználó betöltése nem sikerült');
+      }
+
+      final List<dynamic> usersList =
+          json.decode(userResp.body) as List<dynamic>;
+      final userMap = usersList.cast<Map<String, dynamic>>().firstWhere(
+        (u) => (u['username'] ?? '').toString() == widget.username,
+        orElse: () => {},
+      );
+
+      if (userMap.isEmpty) {
+        throw Exception('Felhasználó nem található');
+      }
+
+      final userId = int.parse(userMap['user_id'].toString());
+
+      // Get customer_id from user_id
+      final customerResp = await http.get(
+        Uri.parse('${ApiConfig.customersApi}?user_id=$userId'),
+      );
+
+      int customerId;
+
+      if (customerResp.statusCode == 200) {
+        final customerData = json.decode(customerResp.body);
+        if (customerData is List && customerData.isNotEmpty) {
+          customerId = int.parse(customerData[0]['customer_id'].toString());
+        } else if (customerData is Map &&
+            customerData.containsKey('customer_id')) {
+          customerId = int.parse(customerData['customer_id'].toString());
+        } else {
+          // No customer found, create one
+          final createResp = await http.post(
+            Uri.parse(ApiConfig.customersApi),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+              'user_id': userId,
+              'first_name': firstNameController.text.trim(),
+              'last_name': lastNameController.text.trim(),
+              'phone': phoneController.text.trim(),
+              'address': houseNumberController.text.trim(),
+              'city': cityController.text.trim(),
+              'postal_code': postalCodeController.text.trim(),
+            }),
+          );
+
+          if (createResp.statusCode != 200) {
+            throw Exception('Nem sikerült az ügyfél profil létrehozása');
+          }
+
+          final createData = json.decode(createResp.body);
+          if (createData['success'] == true) {
+            customerId = createData['customer_id'] as int;
+          } else {
+            throw Exception(
+              createData['error'] ??
+                  'Nem sikerült az ügyfél profil létrehozása',
+            );
+          }
+        }
+      } else {
+        throw Exception('Ügyfél adatai nem érhetők el');
+      }
+
+      // Assemble shipping address
+      final address =
+          '${houseNumberController.text.trim()}, ${cityController.text.trim()} ${postalCodeController.text.trim()}';
+
+      // Prepare order items
+      final items = widget.cart.map((book) {
+        return {
+          'book_id': int.parse(book['book_id'].toString()),
+          'quantity': book['quantity'] as int,
+          'price': double.parse(book['price'].toString()),
+        };
+      }).toList();
+
+      // Send order to API
+      final orderResp = await http.post(
+        Uri.parse(ApiConfig.ordersApi),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'customer_id': customerId,
+          'shipping_address': address,
+          'payment_method': apiPaymentMethod,
+          'items': items,
+        }),
+      );
+
+      if (orderResp.statusCode == 200) {
+        final responseData = json.decode(orderResp.body);
+        if (responseData['success'] == true) {
+          widget.onOrderPlaced();
+          String payMsg = paymentMethod == 'bankkártya'
+              ? 'Bankkártya'
+              : (paymentMethod == 'PayPal' ? 'PayPal' : 'Utánvét');
+          String masked = '';
+          if (paymentMethod == 'bankkártya') {
+            final num = cardNumberController.text.replaceAll(' ', '');
+            if (num.length >= 4) {
+              masked = ' •••• ${num.substring(num.length - 4)}';
+            }
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Rendelés #${responseData['order_id']} sikeresen leadva! Fizetés: $payMsg$masked',
+              ),
+            ),
+          );
+          Navigator.of(context).pop();
+        } else {
+          throw Exception(
+            responseData['error'] ?? 'Rendelés leadása sikertelen',
+          );
+        }
+      } else {
+        final errorData = json.decode(orderResp.body);
+        throw Exception(errorData['error'] ?? 'Szerver hiba');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hiba a rendelés leadása közben: $e')),
+      );
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Rendelés leadva! Fizetés: $payMsg$masked')),
-    );
-    Navigator.of(context).pop();
   }
 
   @override
@@ -2320,11 +2442,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   RadioListTile<String>(
-                    title: const Text('Készpénz'),
-                    value: 'készpénz',
+                    title: const Text('Készpénz (utánvét)'),
+                    value: 'utánvét',
                     groupValue: paymentMethod,
                     onChanged: (v) =>
-                        setState(() => paymentMethod = v ?? 'készpénz'),
+                        setState(() => paymentMethod = v ?? 'utánvét'),
                   ),
                   RadioListTile<String>(
                     title: const Text('Bankkártya'),
