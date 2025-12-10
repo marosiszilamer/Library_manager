@@ -55,8 +55,8 @@ switch ($method) {
     // + POST – új könyv hozzáadása
     case 'POST':
         $title = $input['title'] ?? '';
-        $author_id = intval($input['author_id'] ?? 0);
-        $category_id = intval($input['category_id'] ?? 0);
+        $author_name = $input['author'] ?? '';
+        $category_name = $input['category'] ?? '';
         $price = floatval($input['price'] ?? 0);
         $stock = intval($input['stock'] ?? 0);
         $isbn = $input['isbn'] ?? '';
@@ -65,14 +65,53 @@ switch ($method) {
         $description = $input['description'] ?? '';
         $cover_image = $input['cover_image'] ?? '';
 
+        // Resolve or create author_id
+        $author_id = null;
+        if (!empty($author_name)) {
+            $stmt = $conn->prepare("SELECT author_id FROM authors WHERE name = ?");
+            $stmt->bind_param("s", $author_name);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $author_id = $row['author_id'];
+            } else {
+                // Create new author
+                $stmt = $conn->prepare("INSERT INTO authors (name) VALUES (?)");
+                $stmt->bind_param("s", $author_name);
+                $stmt->execute();
+                $author_id = $conn->insert_id;
+            }
+            $stmt->close();
+        }
+
+        // Resolve or create category_id
+        $category_id = null;
+        if (!empty($category_name)) {
+            $stmt = $conn->prepare("SELECT category_id FROM categories WHERE name = ?");
+            $stmt->bind_param("s", $category_name);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $category_id = $row['category_id'];
+            } else {
+                // Create new category
+                $stmt = $conn->prepare("INSERT INTO categories (name) VALUES (?)");
+                $stmt->bind_param("s", $category_name);
+                $stmt->execute();
+                $category_id = $conn->insert_id;
+            }
+            $stmt->close();
+        }
+
         $stmt = $conn->prepare("INSERT INTO books (title, author_id, category_id, price, stock, isbn, publisher, published_year, description, cover_image)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("siidississ", $title, $author_id, $category_id, $price, $stock, $isbn, $publisher, $published_year, $description, $cover_image);
 
         if ($stmt->execute()) {
-            echo json_encode(["message" => "Book added successfully"]);
+            $new_book_id = $conn->insert_id;
+            echo json_encode(["success" => true, "message" => "Book added successfully", "book_id" => $new_book_id]);
         } else {
-            echo json_encode(["error" => $stmt->error]);
+            echo json_encode(["success" => false, "error" => $stmt->error]);
         }
         $stmt->close();
         break;

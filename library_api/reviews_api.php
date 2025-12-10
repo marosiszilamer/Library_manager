@@ -59,7 +59,7 @@ try {
         $sql = "SELECT r.review_id,
                         r.book_id,
                         r.customer_id,
-                        COALESCE(r.reviewer_name, CONCAT(c.first_name, ' ', c.last_name), u.username, u.email, CONCAT('user_', r.customer_id)) AS username,
+                        COALESCE(CONCAT(c.first_name, ' ', c.last_name), u.username, u.email, CONCAT('user_', r.customer_id)) AS username,
                         r.rating,
                         r.comment,
                         r.review_date
@@ -116,15 +116,19 @@ try {
 
             // Resolve the username -> user_id, then customer_id. If the customer row
             // doesn't exist yet, create a minimal one so reviews link to customers.
+            $customer_id = null;
+
             try {
-                $uStmt = $pdo->prepare('SELECT user_id FROM users WHERE username = :u OR email = :u LIMIT 1');
-                $uStmt->execute([':u' => $username]);
+                $uStmt = $pdo->prepare('SELECT user_id FROM users WHERE username = :u1 OR email = :u2 LIMIT 1');
+                $uStmt->execute([':u1' => $username, ':u2' => $username]);
                 $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+
                 if (!($uRow && !empty($uRow['user_id']))) {
                     http_response_code(401);
-                    echo json_encode(['success' => false, 'message' => 'Unknown user']);
+                    echo json_encode(['success' => false, 'message' => 'Ismeretlen felhasználó (username/email nem található)']);
                     exit;
                 }
+
                 $uid = intval($uRow['user_id']);
 
                 // Try to find existing customer
@@ -142,7 +146,13 @@ try {
             } catch (PDOException $e) {
                 @file_put_contents(__DIR__ . '/reviews_api_error.log', '[' . date('Y-m-d H:i:s') . '] username resolution error: ' . $e->getMessage() . "\n", FILE_APPEND);
                 http_response_code(500);
-                echo json_encode(['success' => false, 'message' => 'Failed to resolve user', 'error' => $e->getMessage()]);
+                echo json_encode(['success' => false, 'message' => 'Felhasználó feloldása sikertelen', 'error' => $e->getMessage()]);
+                exit;
+            }
+
+            if ($customer_id === null) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Nem sikerült customer_id-t társítani ehhez a felhasználóhoz']);
                 exit;
             }
 

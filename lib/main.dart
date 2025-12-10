@@ -64,6 +64,9 @@ class _ProfilePageState extends State<ProfilePage> {
       if (oResp.statusCode == 200) {
         final data = json.decode(oResp.body);
         if (data is List) orders = data;
+      } else if (oResp.statusCode == 404) {
+        // No customer/orders yet
+        orders = [];
       }
     } catch (e) {
       debugPrint('Failed to load profile/orders: $e');
@@ -95,6 +98,16 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       children: orders.map((o) {
         final items = (o['items'] as List<dynamic>?) ?? [];
+        final orderDate = (o['order_date'] ?? o['created_at'] ?? '').toString();
+        final status = (o['status'] ?? 'ismeretlen').toString();
+        final payment = (o['payment_method'] ?? '').toString();
+        final numTotal = items.fold<num>(0, (acc, it) {
+          final qty = (it['quantity'] ?? 0);
+          final unit = (it['unit_price'] ?? it['price'] ?? 0);
+          final q = (qty is num) ? qty : num.tryParse(qty.toString()) ?? 0;
+          final p = (unit is num) ? unit : num.tryParse(unit.toString()) ?? 0;
+          return acc + q * p;
+        });
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8),
           child: Padding(
@@ -106,17 +119,22 @@ class _ProfilePageState extends State<ProfilePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Rendelés #${o['order_id'] ?? ''}'),
-                    Text(o['created_at'] ?? ''),
+                    Text(orderDate),
                   ],
                 ),
+                const SizedBox(height: 4),
+                Text('Státusz: $status'),
+                if (payment.isNotEmpty) Text('Fizetés: $payment'),
                 const SizedBox(height: 8),
                 Column(
                   children: items.map<Widget>((it) {
+                    final unit = it['unit_price'] ?? it['price'] ?? 0;
+                    final qty = it['quantity'] ?? 0;
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading:
-                          it['cover_image'] != null &&
-                              (it['cover_image'] as String).isNotEmpty
+                          (it['cover_image'] != null &&
+                              (it['cover_image'] as String).isNotEmpty)
                           ? SizedBox(
                               width: 48,
                               child: buildCoverWidget(
@@ -128,10 +146,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             )
                           : const Icon(Icons.book),
                       title: Text(it['title'] ?? ''),
-                      subtitle: Text(
-                        '${it['author_name'] ?? ''} • ${it['quantity'] ?? 0} db',
-                      ),
-                      trailing: Text('${it['unit_price'] ?? 0} Ft'),
+                      subtitle: Text('${it['author_name'] ?? ''} • $qty db'),
+                      trailing: Text('${unit ?? 0} Ft'),
                     );
                   }).toList(),
                 ),
@@ -139,7 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'Végösszeg: ${o['total_amount'] ?? 0} Ft',
+                    'Végösszeg: $numTotal Ft',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -602,36 +618,71 @@ class _AuthPageState extends State<AuthPage> {
   Future<Map<String, String>?> _showAddBookDialog() async {
     final titleC = TextEditingController();
     final authorC = TextEditingController();
-    final imageC = TextEditingController();
+    final categoryC = TextEditingController();
     final priceC = TextEditingController();
+    final stockC = TextEditingController();
+    final isbnC = TextEditingController();
+    final publisherC = TextEditingController();
+    final yearC = TextEditingController();
+    final descriptionC = TextEditingController();
+    final imageC = TextEditingController();
 
     return showDialog<Map<String, String>>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Új könyv hozzáadása'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleC,
-              decoration: const InputDecoration(hintText: 'Cím'),
-            ),
-            TextField(
-              controller: authorC,
-              decoration: const InputDecoration(hintText: 'Szerző'),
-            ),
-            TextField(
-              controller: imageC,
-              decoration: const InputDecoration(
-                hintText: 'Borító kép (URL, opcionális)',
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleC,
+                decoration: const InputDecoration(labelText: 'Cím *'),
               ),
-            ),
-            TextField(
-              controller: priceC,
-              decoration: const InputDecoration(hintText: 'Ár (Ft, pl. 2790)'),
-              keyboardType: TextInputType.number,
-            ),
-          ],
+              TextField(
+                controller: authorC,
+                decoration: const InputDecoration(labelText: 'Szerző *'),
+              ),
+              TextField(
+                controller: categoryC,
+                decoration: const InputDecoration(labelText: 'Kategória'),
+              ),
+              TextField(
+                controller: priceC,
+                decoration: const InputDecoration(labelText: 'Ár (Ft) *'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: stockC,
+                decoration: const InputDecoration(labelText: 'Készlet (db)'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: isbnC,
+                decoration: const InputDecoration(labelText: 'ISBN'),
+              ),
+              TextField(
+                controller: publisherC,
+                decoration: const InputDecoration(labelText: 'Kiadó'),
+              ),
+              TextField(
+                controller: yearC,
+                decoration: const InputDecoration(labelText: 'Kiadás éve'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: descriptionC,
+                decoration: const InputDecoration(labelText: 'Leírás'),
+                maxLines: 3,
+              ),
+              TextField(
+                controller: imageC,
+                decoration: const InputDecoration(
+                  labelText: 'Borító kép (fájlnév vagy URL)',
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -642,10 +693,11 @@ class _AuthPageState extends State<AuthPage> {
             onPressed: () {
               final title = titleC.text.trim();
               final author = authorC.text.trim();
-              if (title.isEmpty || author.isEmpty) {
+              final price = priceC.text.trim();
+              if (title.isEmpty || author.isEmpty || price.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Cím és szerző megadása kötelező'),
+                    content: Text('Cím, szerző és ár megadása kötelező'),
                   ),
                 );
                 return;
@@ -653,11 +705,21 @@ class _AuthPageState extends State<AuthPage> {
               final map = <String, String>{
                 'title': title,
                 'author': author,
-                'price': priceC.text.trim(),
+                'price': price,
               };
-              if (imageC.text.trim().isNotEmpty) {
-                map['image'] = imageC.text.trim();
-              }
+              if (categoryC.text.trim().isNotEmpty)
+                map['category'] = categoryC.text.trim();
+              if (stockC.text.trim().isNotEmpty)
+                map['stock'] = stockC.text.trim();
+              if (isbnC.text.trim().isNotEmpty) map['isbn'] = isbnC.text.trim();
+              if (publisherC.text.trim().isNotEmpty)
+                map['publisher'] = publisherC.text.trim();
+              if (yearC.text.trim().isNotEmpty)
+                map['published_year'] = yearC.text.trim();
+              if (descriptionC.text.trim().isNotEmpty)
+                map['description'] = descriptionC.text.trim();
+              if (imageC.text.trim().isNotEmpty)
+                map['cover_image'] = imageC.text.trim();
               Navigator.of(ctx).pop(map);
             },
             child: const Text('Hozzáad'),
@@ -850,7 +912,42 @@ class _AuthPageState extends State<AuthPage> {
                         onPressed: () async {
                           final newBook = await _showAddBookDialog();
                           if (newBook != null) {
-                            setState(() => books.add(newBook));
+                            // Send POST request to add book to database
+                            try {
+                              final response = await http.post(
+                                Uri.parse(ApiConfig.booksApi),
+                                headers: {'Content-Type': 'application/json'},
+                                body: json.encode(newBook),
+                              );
+                              if (response.statusCode == 200) {
+                                final data = json.decode(response.body);
+                                if (data['success'] == true) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Könyv sikeresen hozzáadva!',
+                                      ),
+                                    ),
+                                  );
+                                  // Reload books from server
+                                  await _loadBooks();
+                                } else {
+                                  throw Exception(
+                                    data['error'] ?? 'Ismeretlen hiba',
+                                  );
+                                }
+                              } else {
+                                throw Exception('HTTP ${response.statusCode}');
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Hiba a könyv hozzáadásakor: $e',
+                                  ),
+                                ),
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -1414,7 +1511,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     setState(() => loadingReviews = true);
     try {
       final uri = Uri.parse(
-        'http://localhost/library_api/reviews_api.php?book_id=${Uri.encodeComponent(bookId)}',
+        '${ApiConfig.reviewsApi}?book_id=${Uri.encodeComponent(bookId)}',
       );
       final resp = await http.get(uri);
       if (resp.statusCode == 200) {
@@ -1444,7 +1541,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     }
     final bookId = widget.book['book_id'] ?? '';
     if (bookId.isEmpty) return;
-    final uri = Uri.parse('http://localhost/library_api/reviews_api.php');
+    final uri = Uri.parse(ApiConfig.reviewsApi);
     try {
       final resp = await http.post(
         uri,
