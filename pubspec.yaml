@@ -76,7 +76,13 @@ flutter:
     - assets/orient.jpg
     - assets/pfred.jpg
     - assets/tuskevar.jpg
-    - assets/kod.png
+    - assets/A_harom_testor_afrikaban.jpg
+    - assets/gyuruk_ura.jpg
+    - assets/da_vinci_kod.jpg
+    - assets/Harry_potter_es_a_titkok_kamraja.jpg
+    - assets/kiralyok_csataja.jpg
+    - assets/tiz_kicsi_neger.jpg
+    - assets/tronok_harca.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
