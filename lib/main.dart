@@ -471,47 +471,46 @@ class _AuthPageState extends State<AuthPage> {
     final password = loginPasswordController.text;
 
     try {
-      // Fetch the users list from the users_api and validate locally against the
-      // provided `password_hash` field. This is OK for local/dev testing with
-      // the static JSON dataset you shared. For production, validate on server.
-      final uri = Uri.parse('http://localhost/library_api/users_api.php');
-      final resp = await http.get(uri);
+      // Send login request to server for password verification
+      final uri = Uri.parse(ApiConfig.usersApi);
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'action': 'login',
+          'username': username,
+          'password': password,
+        }),
+      );
 
       if (resp.statusCode == 200) {
-        final List<dynamic> list = json.decode(resp.body) as List<dynamic>;
-        final users = list.cast<Map<String, dynamic>>();
-        final user = users.firstWhere(
-          (u) => (u['username'] ?? '').toString() == username,
-          orElse: () => {},
-        );
-
-        if (user.isEmpty) {
+        final data = json.decode(resp.body) as Map<String, dynamic>;
+        if (data['success'] == true && data['user'] != null) {
+          final user = data['user'] as Map<String, dynamic>;
+          setState(() {
+            userEmail = username;
+            loggedIn = true;
+            showBooks = true;
+            isAdmin =
+                (user['role'] ?? '').toString().contains('admin') ||
+                username.contains('admin');
+          });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nincs ilyen felhasználó.')),
+            const SnackBar(content: Text('Sikeres bejelentkezés.')),
           );
         } else {
-          final stored = (user['password_hash'] ?? '').toString();
-          // NOTE: comparing plain input to stored value — this matches your
-          // current dataset (e.g. password = "hash123"). In real apps use
-          // secure hashing and server-side verification.
-          if (password == stored) {
-            setState(() {
-              userEmail = username;
-              loggedIn = true;
-              showBooks = true;
-              isAdmin =
-                  (user['role'] ?? '').toString().contains('admin') ||
-                  username.contains('admin');
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Sikeres bejelentkezés.')),
-            );
-          } else {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Helytelen jelszó.')));
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Bejelentkezés sikertelen.'),
+            ),
+          );
         }
+      } else if (resp.statusCode == 401) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Helytelen felhasználónév vagy jelszó.'),
+          ),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hiba a szerverrel: ${resp.statusCode}')),
