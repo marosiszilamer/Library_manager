@@ -45,7 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadProfile() async {
     setState(() => loading = true);
     try {
-      // Load user info
+      // Load user basics for the active username
       final uResp = await http.get(Uri.parse(ApiConfig.usersApi));
       if (uResp.statusCode == 200) {
         final List<dynamic> list = json.decode(uResp.body) as List<dynamic>;
@@ -56,7 +56,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (found.isNotEmpty) user = found;
       }
 
-      // Load orders for this user
+      // Load orders (with items) tied to this username
       final ordersUri = Uri.parse(
         '${ApiConfig.ordersApi}?username=${Uri.encodeComponent(widget.username)}',
       );
@@ -471,7 +471,7 @@ class _AuthPageState extends State<AuthPage> {
     final password = loginPasswordController.text;
 
     try {
-      // Send login request to server for password verification
+      // Server-side password verification to avoid client-side checks
       final uri = Uri.parse(ApiConfig.usersApi);
       final resp = await http.post(
         uri,
@@ -493,7 +493,7 @@ class _AuthPageState extends State<AuthPage> {
             showBooks = true;
             isAdmin =
                 (user['role'] ?? '').toString().contains('admin') ||
-                username.contains('admin');
+                username.contains('admin'); // quick fallback for test users
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Sikeres bejelentkezés.')),
@@ -551,6 +551,7 @@ class _AuthPageState extends State<AuthPage> {
     }
 
     try {
+      // Create user on server (password hashed backend side)
       final uri = Uri.parse('http://localhost/library_api/users_api.php');
       final resp = await http.post(
         uri,
@@ -615,6 +616,7 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<Map<String, String>?> _showAddBookDialog() async {
+    // Collect all book fields in one dialog; returns field map or null on cancel
     final titleC = TextEditingController();
     final authorC = TextEditingController();
     final categoryC = TextEditingController();
@@ -761,13 +763,12 @@ class _AuthPageState extends State<AuthPage> {
                   SizedBox(
                     height: 40,
                     child: Image.asset(
-                      'assets/librarymanager_logo.png',
+                      'assets/librarym_logo.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (c, e, s) => const Center(
-                        child: Text(
-                          'Library',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        ),
+                      // Keep a text fallback only if the asset missing
+                      errorBuilder: (c, e, s) => const Text(
+                        'LM',
+                        style: TextStyle(color: Colors.white, fontSize: 20),
                       ),
                     ),
                   ),
@@ -1091,14 +1092,6 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                       child: const Text('Bejelentkezés'),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () {},
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF4A2C2A),
-                    ),
-                    child: const Text('Elfelejtette a jelszavát?'),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1530,6 +1523,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   Future<void> _submitReview() async {
+    // Ensure logged-in user before allowing review submission
     if (!widget.loggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1557,7 +1551,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
         final data = json.decode(resp.body) as Map<String, dynamic>?;
         if (data != null && data['success'] == true) {
           commentController.clear();
-          await _fetchReviews();
+          await _fetchReviews(); // refresh list after successful post
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Vélemény mentve.')));
@@ -2127,6 +2121,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   void _placeOrder() async {
+    // Validate form fields and ensure cart has items
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (widget.cart.isEmpty) {
       ScaffoldMessenger.of(
@@ -2159,12 +2154,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
     }
 
-    // Map payment method to API format
+    // Map payment method to API format (currently a pass-through)
     String apiPaymentMethod = paymentMethod;
     // paymentMethod is already in the correct format for the API
 
     try {
-      // Get user info first
+      // Look up current user and ensure customer profile exists
       final userResp = await http.get(Uri.parse(ApiConfig.usersApi));
       if (userResp.statusCode != 200) {
         throw Exception('Felhasználó betöltése nem sikerült');
@@ -2198,7 +2193,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             customerData.containsKey('customer_id')) {
           customerId = int.parse(customerData['customer_id'].toString());
         } else {
-          // No customer found, create one
+          // No customer found, create one on the fly
           final createResp = await http.post(
             Uri.parse(ApiConfig.customersApi),
             headers: {'Content-Type': 'application/json'},
@@ -2244,7 +2239,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         };
       }).toList();
 
-      // Send order to API
+      // Send order with items to the API
       final orderResp = await http.post(
         Uri.parse(ApiConfig.ordersApi),
         headers: {'Content-Type': 'application/json'},
@@ -2270,6 +2265,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               masked = ' •••• ${num.substring(num.length - 4)}';
             }
           }
+          // Show confirmation with masked card ending when applicable
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
