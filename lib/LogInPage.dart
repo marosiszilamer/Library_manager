@@ -6,6 +6,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LogInPage extends StatefulWidget {
+  const LogInPage({super.key});
+
   @override
   _LogInPageState createState() => _LogInPageState();
 }
@@ -38,7 +40,7 @@ class _LogInPageState extends State<LogInPage> {
         throw Exception('Hálózati hiba: ${response.statusCode}');
       }
       var data = json.decode(response.body);
-      final success;
+      final bool success;
 
       if (data == "Success") {
         final prefs = await SharedPreferences.getInstance();
@@ -84,7 +86,7 @@ class _LogInPageState extends State<LogInPage> {
   String? _validatePassword(String? value) {
     final v = value ?? '';
     if (v.isEmpty) return 'Add meg a jelszót';
-    if (v.length < 6) return 'Legalább 6 karakter szükséges';
+    if (v.length < 6) return 'Legalább 6 karakter legyen';
     return null;
   }
 
@@ -122,7 +124,6 @@ class _LogInPageState extends State<LogInPage> {
                           ),
 
                           validator: _validateUsername,
-                          autofillHints: const [AutofillHints.username],
                         ),
 
                         const SizedBox(height: 16),
@@ -147,7 +148,6 @@ class _LogInPageState extends State<LogInPage> {
                             border: const OutlineInputBorder(),
                           ),
                           validator: _validatePassword,
-                          autofillHints: const [AutofillHints.password],
                         ),
                         const SizedBox(height: 24),
                         SizedBox(

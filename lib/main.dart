@@ -13,7 +13,7 @@ void main() async {
 
 class LibraryClient extends StatelessWidget {
   final bool initialLoggedIn;
-  const LibraryClient({Key? key, required this.initialLoggedIn});
+  const LibraryClient({super.key, required this.initialLoggedIn});
 
   @override
   Widget build(BuildContext context) {
