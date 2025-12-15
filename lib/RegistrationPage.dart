@@ -61,6 +61,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           Navigator.of(context).pop(); // vissza a LoginPage-re
         }
       }
+      sdfghnc  dcv
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
