@@ -17,7 +17,9 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _searchCtrl = TextEditingController();
   final List<Book> _books = [];
   final List<Book> _allBooks = [];
+  final List<Purchase> _purchases = [];
   bool _loading = false;
+  bool _loadingPurchases = false;
   bool _hasSearched = false;
 
   // Adjust this to your server's base address
@@ -27,6 +29,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadAllBooks();
+    _loadPurchases();
   }
 
   @override
@@ -40,6 +43,9 @@ class _HomePageState extends State<HomePage> {
     try {
       final uri = Uri.parse('$_apiBase/books_api.php');
       final resp = await http.get(uri);
+      print('Response status: ${resp.statusCode}');
+      print('Response body: ${resp.body}');
+
       if (resp.statusCode == 200) {
         final decoded = json.decode(resp.body);
         final list = (decoded as List?) ?? [];
@@ -50,12 +56,37 @@ class _HomePageState extends State<HomePage> {
           ..clear()
           ..addAll(_allBooks);
       } else {
-        _fallbackSample('');
+        _showSnack('Hiba a könyvek betöltésekor: ${resp.statusCode}');
       }
     } catch (e) {
-      _fallbackSample('');
+      _showSnack('Nem sikerült betölteni a könyveket: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadPurchases() async {
+    setState(() => _loadingPurchases = true);
+    try {
+      final uri = Uri.parse('$_apiBase/purchases_api.php');
+      final resp = await http.get(uri);
+      if (resp.statusCode == 200) {
+        final decoded = json.decode(resp.body);
+        final list = (decoded as List?) ?? [];
+        setState(() {
+          _purchases
+            ..clear()
+            ..addAll(
+              list.map((e) => Purchase.fromJson(e)).whereType<Purchase>(),
+            );
+        });
+      } else {
+        _showSnack('Hiba a vásárlások betöltésekor: ${resp.statusCode}');
+      }
+    } catch (e) {
+      _showSnack('Nem sikerült betölteni a vásárlásokat: $e');
+    } finally {
+      if (mounted) setState(() => _loadingPurchases = false);
     }
   }
 
@@ -103,11 +134,11 @@ class _HomePageState extends State<HomePage> {
             ..addAll(list.map((e) => Book.fromJson(e)).whereType<Book>());
         });
       } else {
-        // Fallback to local filtering
+        _showSnack('Keresési hiba: ${resp.statusCode}');
         _localSearch(q);
       }
     } catch (e) {
-      // Fallback to local filtering
+      _showSnack('Keresés sikertelen: $e');
       _localSearch(q);
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -139,43 +170,24 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _fallbackSample(String q) {
-    // Simple local sample results when the backend is unreachable
-    final samples = [
-      Book(id: 1, title: '1984', author: 'George Orwell', price: 9.99),
-      Book(
-        id: 2,
-        title: 'A kis herceg',
-        author: 'Antoine de Saint-Exupéry',
-        price: 7.49,
-      ),
-      Book(
-        id: 3,
-        title: 'Egri csillagok',
-        author: 'Gárdonyi Géza',
-        price: 8.25,
-      ),
-    ];
-    _books
-      ..clear()
-      ..addAll(
-        q.isEmpty
-            ? samples
-            : samples.where(
-                (b) =>
-                    b.title.toLowerCase().contains(q.toLowerCase()) ||
-                    b.author.toLowerCase().contains(q.toLowerCase()),
-              ),
-      );
-  }
-
   Future<void> _buy(Book book) async {
     setState(() => _loading = true);
     try {
       final uri = Uri.parse('$_apiBase/orders_api.php');
-      final resp = await http.post(uri, body: {'book_id': book.id.toString()});
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {'book_id': book.id.toString()},
+      );
+      print('Buy response: ${resp.statusCode} - ${resp.body}');
       if (resp.statusCode == 200) {
-        _showSnack('Vásárlás sikeres: ${book.title}');
+        final decoded = json.decode(resp.body);
+        if (decoded['ok'] == true) {
+          _showSnack('Vásárlás sikeres: ${book.title}');
+          _loadPurchases();
+        } else {
+          _showSnack('Vásárlás sikertelen: ${decoded['error']}');
+        }
       } else {
         _showSnack('Vásárlás sikertelen (${resp.statusCode})');
       }
@@ -193,166 +205,215 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Könyvek'),
-        actions: [
-          IconButton(
-            tooltip: 'Kijelentkezés',
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Könyvek'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Könyvek'),
+              Tab(text: 'Vásárlások'),
+            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchCtrl,
-                          textInputAction: TextInputAction.search,
-                          onSubmitted: (_) => _search(),
-                          onChanged: (_) {
-                            // Real-time search as user types
-                            if (_searchCtrl.text.isEmpty) {
-                              _clearSearch();
-                            }
-                          },
-                          decoration: InputDecoration(
-                            hintText:
-                                'Keresés könyv cím vagy szerző alapján...',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _searchCtrl.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: _clearSearch,
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: _loading ? null : _search,
-                        icon: const Icon(Icons.search),
-                        label: const Text('Keresés'),
-                      ),
-                    ],
-                  ),
-                  if (_hasSearched && _books.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        '${_books.length} találat',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (_loading)
-              const LinearProgressIndicator(minHeight: 2)
-            else
-              const SizedBox(height: 2),
-            Expanded(
-              child: _books.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _hasSearched ? Icons.search_off : Icons.book,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _hasSearched
-                                ? 'Nincs találat a keresésre'
-                                : 'Írj be egy keresési kifejezést',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          if (_hasSearched) ...[
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: _clearSearch,
-                              child: const Text('Összes könyv megjelenítése'),
-                            ),
-                          ],
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: _books.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final b = _books[index];
-                        return Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(12),
-                            leading: CircleAvatar(
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                              child: const Icon(Icons.book_outlined),
-                            ),
-                            title: Text(
-                              b.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    b.author,
-                                    style: TextStyle(
-                                      color: Colors.grey[700],
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${b.price.toStringAsFixed(2)} €',
-                                    style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            trailing: FilledButton.icon(
-                              onPressed: () => _buy(b),
-                              icon: const Icon(Icons.shopping_cart, size: 18),
-                              label: const Text('Vásárlás'),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+          actions: [
+            IconButton(
+              tooltip: 'Kijelentkezés',
+              onPressed: _logout,
+              icon: const Icon(Icons.logout),
             ),
           ],
         ),
+        body: SafeArea(
+          child: TabBarView(children: [_buildBooksTab(), _buildPurchasesTab()]),
+        ),
       ),
+    );
+  }
+
+  Widget _buildBooksTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtrl,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _search(),
+                      onChanged: (_) {
+                        // Real-time search as user types
+                        if (_searchCtrl.text.isEmpty) {
+                          _clearSearch();
+                        }
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Keresés könyv cím vagy szerző alapján...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchCtrl.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: _clearSearch,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _loading ? null : _search,
+                    icon: const Icon(Icons.search),
+                    label: const Text('Keresés'),
+                  ),
+                ],
+              ),
+              if (_hasSearched && _books.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    '${_books.length} találat',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (_loading)
+          const LinearProgressIndicator(minHeight: 2)
+        else
+          const SizedBox(height: 2),
+        Expanded(
+          child: _books.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _hasSearched ? Icons.search_off : Icons.book,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _hasSearched
+                            ? 'Nincs találat a keresésre'
+                            : 'Írj be egy keresési kifejezést',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if (_hasSearched) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _clearSearch,
+                          child: const Text('Összes könyv megjelenítése'),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _books.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final b = _books[index];
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(12),
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
+                          child: const Icon(Icons.book_outlined),
+                        ),
+                        title: Text(
+                          b.title,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                b.author,
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${b.price.toStringAsFixed(2)} €',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        trailing: FilledButton.icon(
+                          onPressed: () => _buy(b),
+                          icon: const Icon(Icons.shopping_cart, size: 18),
+                          label: const Text('Vásárlás'),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPurchasesTab() {
+    if (_loadingPurchases) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_purchases.isEmpty) {
+      return Center(
+        child: Text(
+          'Nincsenek vásárlások',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(8),
+      itemCount: _purchases.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final p = _purchases[index];
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: ListTile(
+            leading: const Icon(Icons.receipt_long),
+            title: Text(p.title),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mennyiség: ${p.quantity} • Ár: ${p.price.toStringAsFixed(2)} €',
+                ),
+                Text('Státusz: ${p.status} • Dátum: ${p.orderDate}'),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -379,5 +440,48 @@ class Book {
       return Book(id: id, title: title, author: author, price: price);
     }
     return Book(id: 0, title: json.toString(), author: '', price: 0.0);
+  }
+}
+
+class Purchase {
+  final int id;
+  final int orderId;
+  final String title;
+  final int quantity;
+  final double price;
+  final String status;
+  final String orderDate;
+
+  Purchase({
+    required this.id,
+    required this.orderId,
+    required this.title,
+    required this.quantity,
+    required this.price,
+    required this.status,
+    required this.orderDate,
+  });
+
+  factory Purchase.fromJson(dynamic json) {
+    if (json is Map<String, dynamic>) {
+      return Purchase(
+        id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+        orderId: int.tryParse(json['order_id']?.toString() ?? '') ?? 0,
+        title: (json['title'] ?? '').toString(),
+        quantity: int.tryParse(json['quantity']?.toString() ?? '') ?? 0,
+        price: double.tryParse(json['price']?.toString() ?? '') ?? 0.0,
+        status: (json['status'] ?? 'pending').toString(),
+        orderDate: (json['order_date'] ?? '').toString(),
+      );
+    }
+    return Purchase(
+      id: 0,
+      orderId: 0,
+      title: json.toString(),
+      quantity: 0,
+      price: 0,
+      status: 'pending',
+      orderDate: '',
+    );
   }
 }
