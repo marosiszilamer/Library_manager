@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'HomePage.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -28,7 +32,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
   bool _obscurePasswordConfirm = true;
   @override
   void dispose() {
-    final formKey = GlobalKey<FormState>();
     _usernameController.dispose();
     _passwordController.dispose();
     _emailController.dispose();
@@ -47,21 +50,50 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
     setState(() => _isLoading = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 800));
+      // TODO: Update this URL to your registration API endpoint
+      var url = Uri.parse('http://10.227.70.4:80/library_api/register_api.php');
+      var response = await http.post(
+        url,
+        body: {
+          'username': _usernameController.text,
+          'password': _passwordController.text,
+          'email': _emailController.text,
+          'first_name': _confirmFNController.text,
+          'last_name': _confirmLNController.text,
+          'phone_number': _confirmPhoneNumController.text,
+          'address': _confirmAddrController.text,
+          'city': _confirmCityController.text,
+          'postal_code': _confirmPostalCodeController.text,
+        },
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Hálózati hiba: ${response.statusCode}');
+      }
+      var data = json.decode(response.body);
+      final bool success;
 
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
+      if (data == "Success") {
+        success = true;
+      } else {
+        success = false;
+      }
 
-      // Példa: sikeres regisztráció, ha nem üres
-      if (email.isNotEmpty && password.isNotEmpty) {
+      if (!success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sikeres regisztráció!')),
+            const SnackBar(content: Text('Regisztráció sikertelen!')),
           );
-          Navigator.of(context).pop(); // vissza a LoginPage-re
         }
+        return;
       }
-      sdfghnc  dcv
+
+      // Success: show message and go back to login
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sikeres regisztráció! Jelentkezz be.')),
+        );
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -103,7 +135,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
   String? _validateFirstName(String? value) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Add meg a keresztnevedet';
-    final emailRegex = RegExp('^[A-Z][a-z]+\$');
+    final emailRegex = RegExp('^[a-z]+\$');
     if (!emailRegex.hasMatch(v)) return 'Nem érvényes keresztnev formátum';
     return null;
   }
@@ -111,7 +143,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
   String? _validateLastName(String? value) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Add meg a vezetéknevedet';
-    final emailRegex = RegExp('^[A-Z][a-z]+\$');
+    final emailRegex = RegExp('^[a-z]+\$');
     if (!emailRegex.hasMatch(v)) return 'Nem érvényes vezetéknév formátum';
     return null;
   }
@@ -119,8 +151,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   String? _validatePhoneNumber(String? value) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Add meg a telefonszámodat';
-    final emailRegex = RegExp('^[+]?[0-9]?[0-9]{10}\$');
-    if (!emailRegex.hasMatch(v)) return 'Nem érvényes telefonszám formátum';
+    /* final emailRegex = RegExp('^[+]?[0-9]?[0-9]{10}\$');
+    if (!emailRegex.hasMatch(v)) return 'Nem érvényes telefonszám formátum';*/
     return null;
   }
 
@@ -133,7 +165,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
   String? _validateCity(String? value) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Add meg a városodat';
-    final emailRegex = RegExp('^[A-Z][a-z]*\$');
+    final emailRegex = RegExp('^[a-z]*\$');
     if (!emailRegex.hasMatch(v)) return 'Nem érvényes város formátum';
     return null;
   }
@@ -141,13 +173,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
   String? _validatePostalCode(String? value) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Add meg a postai irányítószámodat';
-    final emailRegex = RegExp('^[0-9]{6}\$');
-    if (!emailRegex.hasMatch(v)) return 'Nem érvényes iranyitoszam formátum';
+    final postalRegex = RegExp('^[0-9]{6}\$');
+    if (!postalRegex.hasMatch(v))
+      return 'Nem érvényes irányítószám (6 számjegy kell legyen)';
     return null;
-  }
-
-  Future<void> _onRegistration() async {
-    Navigator.of(context).pop(); // Vissza a bejelentkezési oldalra
   }
 
   @override
@@ -342,7 +371,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
-                            onPressed: _isLoading ? null : _onRegistration,
+                            onPressed: _isLoading ? null : _onRegister,
                             child: _isLoading
                                 ? const SizedBox(
                                     height: 20,

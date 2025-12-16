@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'LogInPage.dart';
+import 'LogInPage.dart' as login;
+import 'HomePage.dart' as home;
 import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +21,7 @@ class LibraryClient extends StatelessWidget {
     return MaterialApp(
       title: 'Library Client',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: initialLoggedIn ? HomePage() : LogInPage(),
+      home: initialLoggedIn ? home.HomePage() : login.LogInPage(),
     );
   }
 }

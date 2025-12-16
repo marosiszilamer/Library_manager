@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'RegistrationPage.dart';
+import 'HomePage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
@@ -31,25 +32,33 @@ class _LogInPageState extends State<LogInPage> {
 
     setState(() => _isLoading = true);
     try {
-      var url = Uri.parse('http://10.86.199.4:80/library_api/client_login.php');
+      var url = Uri.parse('http://10.227.70.4:80/library_api/client_login.php');
       var response = await http.post(
         url,
         body: {'username': user.text, 'password': pass.text},
       );
+
+      print('Login response status: ${response.statusCode}');
+      print('Login response body: ${response.body}');
+
       if (response.statusCode != 200) {
         throw Exception('Hálózati hiba: ${response.statusCode}');
       }
-      var data = json.decode(response.body);
-      final bool success;
 
-      if (data == "Success") {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('loggedIn', true);
+      bool success;
+      final responseBody = response.body.trim();
 
-        success = true;
-      } else {
-        success = false;
+      try {
+        var data = json.decode(responseBody);
+        success =
+            (data == "Success" ||
+            data['ok'] == true ||
+            data['success'] == true);
+      } catch (_) {
+        // Plain text response
+        success = responseBody.toLowerCase() == "success";
       }
+
       if (!success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -59,13 +68,17 @@ class _LogInPageState extends State<LogInPage> {
         return;
       }
 
+      // Success - save login state and navigate to HomePage
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('loggedIn', true);
+
       if (mounted) {
         Navigator.of(
           context,
         ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
       }
     } catch (e) {
-      Text('Bejelentkezési hiba: $e');
+      print('Login error: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -181,36 +194,6 @@ class _LogInPageState extends State<LogInPage> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Kezdőoldal')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 48),
-            const SizedBox(height: 12),
-            const Text('Sikeres bejelentkezés!'),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => LogInPage()),
-                );
-              },
-              child: const Text('Kijelentkezés'),
-            ),
-          ],
         ),
       ),
     );
